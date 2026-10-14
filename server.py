@@ -64,7 +64,7 @@ def served_html(root, aid, text=None, rev=None):
     text = text or (root/'index.html').read_text('utf-8-sig')
     text = re.sub(r'<base\b[^>]*>', '', text)
     context={'articleId':aid, 'revision':rev or revision(root)}
-    return text.replace('<head>', '<head><base href="'+BASE+'/articles/'+aid+'/">'+'<script id="editor-context" type="application/json">'+encode(context)+'</script>')
+    return text.replace('<head>', '<head><link rel="icon" type="image/svg+xml" href="/icon.svg"><base href="'+BASE+'/articles/'+aid+'/">'+'<script id="editor-context" type="application/json">'+encode(context)+'</script>')
 def save(root, model):
     recovery=root/'_runtime/editor-recovery'; recovery.mkdir(parents=True,exist_ok=True)
     shutil.copy2(root/'index.html', recovery/(uuid.uuid4().hex+'.html'))
@@ -111,6 +111,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         try:
             path=unquote(urlsplit(self.path).path)
+            if path in ['/icon.svg','/favicon.ico']:
+                self.send_file(TOOL/'web/icon.svg');return
             if path=='/api/about': self.reply(200,{'version':(TOOL/'VERSION').read_text().strip(),'changelog':(TOOL/'CHANGELOG.md').read_text('utf8'),'port':PORT});return
             if path.startswith('/api/jobs/'):
                 jid=path.split('/')[-1]
@@ -122,7 +124,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_response(200);self.send_header('Content-Type','font/otf');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
             if path in ['/','/index.html']:
                 links=''.join('<li><a href="/articles/'+aid+'/index.html">'+html.escape(d.name)+'</a></li>' for aid,d in catalog().items())
-                self.send_file(Path('index.html'),'<!doctype html><meta charset="utf-8"><title>进化猫图文目录</title><style>body{font:18px/2 Microsoft YaHei;background:#eef4ef;color:#262b27;max-width:1000px;margin:60px auto}a{color:#507b29}li{padding:16px;background:white;border-radius:10px;margin-bottom:16px}</style><h1>进化猫图文编辑器</h1><p>打开某篇内容，可在多个标签页同时编辑。保存独立，PNG导出排队。</p><ul>'+links+'</ul>');return
+                self.send_file(Path('index.html'),'<!doctype html><meta charset="utf-8"><link rel="icon" type="image/svg+xml" href="/icon.svg"><title>进化猫图文目录</title><style>body{font:18px/2 Microsoft YaHei;background:#eef4ef;color:#262b27;max-width:1000px;margin:60px auto}a{color:#507b29}li{padding:16px;background:white;border-radius:10px;margin-bottom:16px}</style><h1>进化猫图文编辑器</h1><p>打开某篇内容，可在多个标签页同时编辑。保存独立，PNG导出排队。</p><ul>'+links+'</ul>');return
             if path.startswith('/articles/'):
                 _,_,aid,*rest=path.split('/');root=article(aid);rel='/'.join(rest) or 'index.html'
                 if rel.startswith('assets/editor/'):
