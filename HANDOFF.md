@@ -23,3 +23,5 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 工具位于既有D:/tools Git仓，窄范围提交；技能入口修改可在既有技能仓窄范围提交，不推送。
 
 追加验证：A导出running时，B保存31ms完成；B旧快照输出标failed，未覆盖既有PNG。测试脚本_runtime/check_save_during_export.py。footer改为本期模型可选字段，默认进化猫，不在通用代码写死素材管理主题。
+
+1.2.1新增SVG favicon；工具架卡片使用同图标，目录与篇目页均注入/icon.svg。SVG端点浏览器实际打开成功。
