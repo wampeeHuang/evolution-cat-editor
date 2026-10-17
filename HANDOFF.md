@@ -89,3 +89,7 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 用户授权只推送本工具。原目录建立独立Git仓，保留subtree提取的工具历史；main对应公开远端https://github.com/wampeeHuang/evolution-cat-editor。原总仓历史不改写，后续操作仅以本目录为Git根。_runtime持久分类和状态、文章、图片、缓存不推送；运行路径与8797入口不变。
 
 用户随后授权仓库公开，GitHub已回读visibility=PUBLIC。公开范围仅工具源码及文档，文章正文/图片与_runtime分类状态数据仍未纳入Git。
+
+## README 面向新用户 · 2026-10-17
+
+重写功能、安装配置、使用流程与限制说明；examples/demo为纯虚构两页演示稿和程序生成配图，docs/screenshots仅拍隔离8808演示服务。没有使用真实图文正文或素材。安装明确记录render.cjs现有本机路径限制，未声称跨机开箱即用。
