@@ -41,3 +41,9 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 发布图片区新增“打开文件夹”，通过同源POST打开当前篇01_图卡/cards。服务器按articleId推导固定目录，不接收任意路径；目录缺失显示错误，保留复制路径入口。仅本机Windows服务支持。
 
 验证：开发篇浏览器点击“打开文件夹”后显示“已打开本篇正式图片文件夹”；接口返回opened=true及当前篇正式图片目录。缺少Origin请求403、无效篇ID400。未通过原生窗口检查资源管理器显示位置。JS语法及Python编译通过。
+
+## 1.2.5 · 2026-10-17
+
+发布平台导航新增抖音创作者中心https://creator.douyin.com/，新标签打开，noopener/noreferrer。共用编辑器向兼容篇目注入，保留小红书与微信公众号。仅跳转，不自动上传或发布。
+
+验证：开发篇发布导航含三平台；浏览器点击抖音实际新开标签并到达https://creator.douyin.com/creator-micro/home，未执行上传或发布。截图_runtime/douyin-publish-link-1.2.5.png。JS语法检查通过。

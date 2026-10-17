@@ -4,6 +4,7 @@ const icons={save:'<path d="M5 3h12l4 4v14H3V3h2Z"/><path d="M7 3v6h10V3M7 21v-8
 const svg=name=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button=(id,icon,label,tip=label,cls='')=>`<button type="button" id="${id}" class="icon-btn ${cls}" aria-label="${label}" data-tip="${esc(tip)}">${svg(icon)}</button>`;
+const publishLinks=document.querySelector('.platform-links');if(publishLinks&&!publishLinks.querySelector('[data-platform="douyin"]')){const a=document.createElement('a');a.dataset.platform='douyin';a.href='https://creator.douyin.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='↗ 抖音';publishLinks.append(a);}
 const defaults={heading:88,body:33,note:27,preset:'design',palette:'ink',bold:true,fonts:{heading:'wenyuan-serif-sc',body:'lxgw-wenkai',note:''}};
 const seed=JSON.parse($('#document-state').textContent);seed.theme={...defaults,...seed.theme};let model=structuredClone(seed),savedState=JSON.stringify(model),current=0,busy=false,imageTarget=null,lastGroup='',lastTime=0;
 let history=[structuredClone(model)],historyIndex=0;const exporting=new URLSearchParams(location.search).has('export');const context=JSON.parse($('#editor-context')?.textContent||'{}');let fileRevision=context.revision;const isolated=!context.articleId;const api='http://127.0.0.1:8797';const draftKey='material-editor:'+location.pathname;let draftTimer;
