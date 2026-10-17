@@ -10,4 +10,4 @@
 
 字体提供方字荐8770为可选；使用自选字体须运行它。渲染依赖已安装Node、Playwright与Edge，路径见render.cjs，跨机需适配。只本机监听，无上传发布或账号操作。
 
-版本日志VERSION/CHANGELOG.md由页面直接读取。交接HANDOFF.md，验收_runtime/验收.md；verify.py核对隔离测试证据，测试素材只在_runtime/不进源码。停止脚本核对命令归属。工具位于既有D:/tools Git仓，窄范围提交；不另建仓库。
+版本日志VERSION/CHANGELOG.md由页面直接读取。交接HANDOFF.md，验收_runtime/验收.md；verify.py核对隔离测试证据，测试素材只在_runtime/不进源码。停止脚本核对命令归属。工具使用独立Git仓：D:/tools/evolution-cat-editor，默认分支main；远端https://github.com/wampeeHuang/evolution-cat-editor（私有）。历史仅从原总仓提取本工具目录，不包含其他工具。使用git -C D:/tools/evolution-cat-editor执行后续版本操作。

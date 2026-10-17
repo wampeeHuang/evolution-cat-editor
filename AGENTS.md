@@ -6,6 +6,6 @@
 
 web/为通用编辑组件，server.py/render.cjs为服务/PNG渲染。_runtime仅工具自有任务/隔离测试，不能复制用户私有素材进Git。新期仍保留本地资产用于file浏览，在线组件由工具统一提供。更新VERSION/CHANGELOG和HANDOFF。验证两篇独立保存、同篇冲突、并发导出、路径隔离、实际PNG；不以状态标签证明成功。仅监听127.0.0.1:8797，工具架按需启停不自动启动。迁移与调试不得覆盖用户未保存内容。
 
-局部授权例外：D:/tools/CLAUDE.md原仅准入第三方克隆工具；用户本轮明确要求自建通用服务迁入本目录，按该明确授权执行，不扩大到其他自建项目。代码在D:/tools既有Git仓窄范围提交，_runtime测试/用户素材不进Git。
+局部授权例外：D:/tools/CLAUDE.md原仅准入第三方克隆工具；用户本轮明确要求自建通用服务迁入本目录，按该明确授权执行，不扩大到其他自建项目。用户已授权工具独立建仓：Git根为D:/tools/evolution-cat-editor，远端wampeeHuang/evolution-cat-editor，main分支；后续仅在本工具仓提交，不能在D:/tools总仓提交本工具变更。_runtime测试/用户素材不进Git。
 
 首页分类与最近打开时间的唯一来源为_runtime/catalog-metadata.json，属持久用户管理数据，不作为可清理缓存；图卡内容仍以各篇document-state为准。创建时间显示目录创建时间，不倒填历史打开记录。
