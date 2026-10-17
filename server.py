@@ -30,7 +30,7 @@ def catalog_items():
         for aid,root in catalog().items():
             model=read_model(root);info=meta['articles'].get(aid,{})
             default='工具推荐' if any(w in root.name for w in ['工具','画布']) else '产品分享' if '求反馈' in root.name else '未分类'
-            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'published':info.get('published',False)})
+            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'published':info.get('published',False),'count':len(model['cards']),'cover':'/articles/'+aid+'/01_图卡/cards/card_1.png' if (root/'01_图卡/cards/card_1.png').is_file() else '/articles/'+aid+'/'+model['cards'][0]['pictures'][0]['image']})
         return {'items':items,'categories':meta['categories']}
 
 def lock_for(aid):
@@ -187,6 +187,9 @@ class Handler(SimpleHTTPRequestHandler):
                 self.reply(200,{'saved':True});return
             root=article(p['articleId']);aid=p['articleId']
             if route=='/api/config':self.reply(200,{'folder':str(root)});return
+            if route=='/api/open-article-folder':
+                os.startfile(str(root))
+                self.reply(200,{'opened':True,'folder':str(root)});return
             if route=='/api/open-publish-folder':
                 folder=(root/'01_图卡'/'cards').resolve()
                 if not folder.is_relative_to(root) or not folder.is_dir():raise ValueError('正式图片目录不存在，请先导出PNG')
