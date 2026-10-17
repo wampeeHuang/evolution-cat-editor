@@ -8,4 +8,8 @@
 
 #more-categories summary.active{color:var(--accent);background:var(--soft);border-radius:6px}
 
-#add-category{position:relative;flex:none}#add-category>summary{list-style:none;display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:6px}#add-category svg{width:17px;height:17px}#add-category .popup{left:0;right:auto}#add-category form{display:flex;flex-direction:column;align-items:stretch;margin:0;gap:8px}#add-category input{max-width:none}#add-category[open]>summary{color:var(--accent)}
+#add-category{position:relative;flex:none}#add-category>summary{list-style:none;display:grid;place-items:center;width:var(--category-height);height:var(--category-height);border:1px solid var(--line);border-radius:7px}#add-category svg{width:17px;height:17px}#add-category .popup{left:0;right:auto}#add-category form{display:flex;flex-direction:column;align-items:stretch;margin:0;gap:8px}#add-category input{max-width:none}#add-category[open]>summary{color:var(--accent)}
+
+.category-group{--category-height:2.5rem}#categories button,#more-categories>summary{height:var(--category-height)}#category-form button[type=submit]{align-self:flex-end;min-width:5rem;background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600;text-align:center}#category-form button[type=submit]:hover{background:var(--focus);border-color:var(--focus)}#category-form button[type=submit]:disabled{opacity:.6;cursor:wait}
+
+#categories button,#more-categories>summary{width:5.5rem;min-width:5.5rem;padding-left:0;padding-right:0;text-align:center}
