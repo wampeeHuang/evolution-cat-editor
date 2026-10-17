@@ -31,3 +31,7 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 共享editor.js/editor.css增加右下角48px圆形箭头按钮；页面滚动320px后显示，点击关闭浮层、清除提示、页码回P1并即时回scrollY=0，顶部隐藏。export模式不创建，打印隐藏；不改内容模型与保存协议。VERSION/CHANGELOG同步。
 
 实际浏览器验证开发篇：发布面板滚动后可见，点击后scrollY=0、hidden=true、P1/7。截图_runtime/back-to-top-visible.png。node --check与窄范围git diff --check通过。恢复点_runtime/before-back-to-top-*。本次未重跑历史保存冲突/并发导出套件，未改相关逻辑。
+
+## 1.2.3 · 统一字号与默认排版
+
+默认主题为文渊宋体88、霞鹜文楷33、注释沿用设计27，品牌墨色加粗。两篇画布推荐同步该主题。封面标题使用与其他页相同字号，覆盖历史封面!important固定尺寸。其他已保存主题不自动迁移。
