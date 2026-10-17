@@ -2,7 +2,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote, urlsplit, quote
 from urllib.request import urlopen
-import json, re, hashlib, threading, queue, uuid, subprocess, shutil, time, html
+import json, re, hashlib, threading, queue, uuid, subprocess, shutil, time, html, os
 
 TOOL = Path(__file__).resolve().parent
 CONFIG = json.loads((TOOL/'config.json').read_text('utf8'))
@@ -149,6 +149,11 @@ class Handler(SimpleHTTPRequestHandler):
             if route=='/api/fonts':self.reply(200,{'fonts':[{'id':f['id'],'name':f['name']} for f in fonts()]});return
             root=article(p['articleId']);aid=p['articleId']
             if route=='/api/config':self.reply(200,{'folder':str(root)});return
+            if route=='/api/open-publish-folder':
+                folder=(root/'01_图卡'/'cards').resolve()
+                if not folder.is_relative_to(root) or not folder.is_dir():raise ValueError('正式图片目录不存在，请先导出PNG')
+                os.startfile(str(folder))
+                self.reply(200,{'opened':True,'folder':str(folder)});return
             model=p['model'];validate(root,model)
             if route=='/api/save':
                 with lock_for(aid):
