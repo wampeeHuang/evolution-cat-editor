@@ -13,6 +13,25 @@ PAT = r'(<script type="application/json" id="document-state">)(.*?)(</script>)'
 LOCKS = {}; LOCK_GUARD = threading.Lock()
 JOBS = {}; JOB_LOCK = threading.Lock(); Q = queue.Queue()
 TESTS = TOOL/'_runtime/fixtures'
+META_FILE = TOOL/'_runtime/catalog-metadata.json'
+META_LOCK = threading.RLock()
+
+def catalog_meta():
+    if META_FILE.exists(): return json.loads(META_FILE.read_text('utf8'))
+    return {'categories':['工具推荐','产品分享','未分类'],'articles':{}}
+
+def store_catalog_meta(meta):
+    META_FILE.parent.mkdir(parents=True,exist_ok=True)
+    tmp=META_FILE.with_suffix('.tmp');tmp.write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf8');tmp.replace(META_FILE)
+
+def catalog_items():
+    with META_LOCK:
+        meta=catalog_meta();items=[]
+        for aid,root in catalog().items():
+            model=read_model(root);info=meta['articles'].get(aid,{})
+            default='工具推荐' if any(w in root.name for w in ['工具','画布']) else '产品分享' if '求反馈' in root.name else '未分类'
+            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'published':info.get('published',False)})
+        return {'items':items,'categories':meta['categories']}
 
 def lock_for(aid):
     with LOCK_GUARD: return LOCKS.setdefault(aid, threading.Lock())
@@ -114,6 +133,9 @@ class Handler(SimpleHTTPRequestHandler):
             if path in ['/icon.svg','/favicon.ico']:
                 self.send_file(TOOL/'web/icon.svg');return
             if path=='/api/about': self.reply(200,{'version':(TOOL/'VERSION').read_text().strip(),'changelog':(TOOL/'CHANGELOG.md').read_text('utf8'),'port':PORT});return
+            if path=='/api/catalog':self.reply(200,catalog_items());return
+            if path in ['/web/catalog.js','/web/catalog.css']:
+                self.send_file(TOOL/path.lstrip('/'));return
             if path.startswith('/api/jobs/'):
                 jid=path.split('/')[-1]
                 with JOB_LOCK: j=dict(JOBS.get(jid,{}));j['ahead']=sum(1 for x in JOBS.values() if x['state'] in ['queued','running'] and x['created']<j.get('created',0))
@@ -123,14 +145,15 @@ class Handler(SimpleHTTPRequestHandler):
                 with urlopen('http://127.0.0.1:8770/'+quote(f['file']),timeout=15) as r: raw=r.read()
                 self.send_response(200);self.send_header('Content-Type','font/otf');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
             if path in ['/','/index.html']:
-                links=''.join('<li><a href="/articles/'+aid+'/index.html">'+html.escape(d.name)+'</a></li>' for aid,d in catalog().items())
-                self.send_file(Path('index.html'),'<!doctype html><meta charset="utf-8"><link rel="icon" type="image/svg+xml" href="/icon.svg"><title>进化猫图文目录</title><style>body{font:18px/2 Microsoft YaHei;background:#eef4ef;color:#262b27;max-width:1000px;margin:60px auto}a{color:#507b29}li{padding:16px;background:white;border-radius:10px;margin-bottom:16px}</style><h1>进化猫图文编辑器</h1><p>打开某篇内容，可在多个标签页同时编辑。保存独立，PNG导出排队。</p><ul>'+links+'</ul>');return
+                self.send_file(TOOL/'web/catalog.html');return
             if path.startswith('/articles/'):
                 _,_,aid,*rest=path.split('/');root=article(aid);rel='/'.join(rest) or 'index.html'
                 if rel.startswith('assets/editor/'):
                     target=TOOL/'web'/Path(rel).name
                 else: target=(root/rel).resolve();target.relative_to(root)
                 if rel=='index.html':
+                    with META_LOCK:
+                        meta=catalog_meta();meta['articles'].setdefault(aid,{})['lastOpened']=time.time();store_catalog_meta(meta)
                     with lock_for(aid): self.send_file(target,served_html(root,aid))
                 else:self.send_file(target)
                 return
@@ -147,6 +170,21 @@ class Handler(SimpleHTTPRequestHandler):
             if not 0<n<=32*1024*1024:raise ValueError('请求大小无效')
             p=json.loads(self.rfile.read(n));route=urlsplit(self.path).path
             if route=='/api/fonts':self.reply(200,{'fonts':[{'id':f['id'],'name':f['name']} for f in fonts()]});return
+            if route=='/api/catalog-meta':
+                with META_LOCK:
+                    meta=catalog_meta()
+                    if 'newCategory' in p:
+                        name=p['newCategory']
+                        if not isinstance(name,str) or not 1<=len(name.strip())<=20:raise ValueError('分类名称需为1至20字')
+                        name=name.strip()
+                        if name=='全部' or name in meta['categories']:raise ValueError('分类名称已存在或不可用')
+                        meta['categories'].append(name)
+                    else:
+                        aid=p['articleId'];article(aid)
+                        if p.get('category') not in meta['categories']:raise ValueError('分类不存在')
+                        meta['articles'].setdefault(aid,{})['category']=p['category']
+                    store_catalog_meta(meta)
+                self.reply(200,{'saved':True});return
             root=article(p['articleId']);aid=p['articleId']
             if route=='/api/config':self.reply(200,{'folder':str(root)});return
             if route=='/api/open-publish-folder':
