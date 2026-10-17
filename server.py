@@ -30,7 +30,7 @@ def catalog_items():
         for aid,root in catalog().items():
             model=read_model(root);info=meta['articles'].get(aid,{})
             default='工具推荐' if any(w in root.name for w in ['工具','画布']) else '产品分享' if '求反馈' in root.name else '未分类'
-            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'published':info.get('published',False),'count':len(model['cards']),'cover':'/articles/'+aid+'/01_图卡/cards/card_1.png' if (root/'01_图卡/cards/card_1.png').is_file() else '/articles/'+aid+'/'+model['cards'][0]['pictures'][0]['image']})
+            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'status':info.get('status','已发布' if info.get('published',False) else '待调整'),'count':len(model['cards']),'cover':'/articles/'+aid+'/01_图卡/cards/card_1.png' if (root/'01_图卡/cards/card_1.png').is_file() else '/articles/'+aid+'/'+model['cards'][0]['pictures'][0]['image']})
         return {'items':items,'categories':meta['categories']}
 
 def lock_for(aid):
@@ -181,8 +181,13 @@ class Handler(SimpleHTTPRequestHandler):
                         meta['categories'].append(name)
                     else:
                         aid=p['articleId'];article(aid)
-                        if p.get('category') not in meta['categories']:raise ValueError('分类不存在')
-                        meta['articles'].setdefault(aid,{})['category']=p['category']
+                        if 'status' in p:
+                            if p['status'] not in ['已放弃','待调整','已发布']:raise ValueError('状态不存在')
+                            info=meta['articles'].setdefault(aid,{})
+                            info['status']=p['status'];info.pop('published',None)
+                        else:
+                            if p.get('category') not in meta['categories']:raise ValueError('分类不存在')
+                            meta['articles'].setdefault(aid,{})['category']=p['category']
                     store_catalog_meta(meta)
                 self.reply(200,{'saved':True});return
             root=article(p['articleId']);aid=p['articleId']
