@@ -7,3 +7,5 @@
 .container{max-width:none;width:100%;padding-left:128px;padding-right:128px}@media(max-width:700px){.container{padding-left:16px;padding-right:16px}}
 
 #more-categories summary.active{color:var(--accent);background:var(--soft);border-radius:6px}
+
+#add-category{position:relative;flex:none}#add-category>summary{list-style:none;display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:6px}#add-category svg{width:17px;height:17px}#add-category .popup{left:0;right:auto}#add-category form{display:flex;flex-direction:column;align-items:stretch;margin:0;gap:8px}#add-category input{max-width:none}#add-category[open]>summary{color:var(--accent)}
