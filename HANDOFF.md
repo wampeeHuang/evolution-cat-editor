@@ -25,3 +25,9 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 追加验证：A导出running时，B保存31ms完成；B旧快照输出标failed，未覆盖既有PNG。测试脚本_runtime/check_save_during_export.py。footer改为本期模型可选字段，默认进化猫，不在通用代码写死素材管理主题。
 
 1.2.1新增SVG favicon；工具架卡片使用同图标，目录与篇目页均注入/icon.svg。SVG端点浏览器实际打开成功。
+
+## 1.2.2 · 2026-10-17 返回顶部
+
+共享editor.js/editor.css增加右下角48px圆形箭头按钮；页面滚动320px后显示，点击关闭浮层、清除提示、页码回P1并即时回scrollY=0，顶部隐藏。export模式不创建，打印隐藏；不改内容模型与保存协议。VERSION/CHANGELOG同步。
+
+实际浏览器验证开发篇：发布面板滚动后可见，点击后scrollY=0、hidden=true、P1/7。截图_runtime/back-to-top-visible.png。node --check与窄范围git diff --check通过。恢复点_runtime/before-back-to-top-*。本次未重跑历史保存冲突/并发导出套件，未改相关逻辑。

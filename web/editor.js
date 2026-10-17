@@ -64,5 +64,16 @@ $$('[data-copy]').forEach(b=>{const key=b.dataset.copy;b.className='publish-copy
 document.addEventListener('pointerover',e=>tooltip(e.target.closest('[data-tip]')));document.addEventListener('pointerout',e=>{if(!e.relatedTarget?.closest?.('[data-tip]'))tooltip(null);});document.addEventListener('focusin',e=>tooltip(e.target.closest('[data-tip]')));document.addEventListener('focusout',()=>tooltip(null));document.addEventListener('click',e=>{if(!e.target.closest('.editor-popup,.editor-modal,.editor-commands,.page-badge'))closePopups();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#font-modal').hidden=true;$('#about-modal').hidden=true;closePopups();document.activeElement?.blur();tooltip(null);}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();travel(e.shiftKey?1:-1);}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();travel(1);}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}});window.addEventListener('resize',()=>{resize();growPublish();checkLayout();});window.addEventListener('beforeunload',e=>{if(!exporting&&JSON.stringify(model)!==savedState){e.preventDefault();e.returnValue='';}});
 renderCards();syncSettings();restorePrompt();new ResizeObserver(growPublish).observe($('#publish'));window.addEventListener('load',growPublish);
+if(!exporting){
+ const topButton=document.createElement('button');
+ topButton.type='button';topButton.className='back-to-top';topButton.hidden=true;
+ topButton.setAttribute('aria-label','返回顶部');topButton.title='返回顶部';
+ topButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+ document.body.append(topButton);
+ const updateTopButton=()=>{topButton.hidden=window.scrollY<320;};
+ topButton.addEventListener('click',()=>{closePopups();tooltip(null);current=0;updatePage();topButton.blur();window.scrollTo({top:0,behavior:'instant'});});
+ window.addEventListener('scroll',updateTopButton,{passive:true});
+ window.addEventListener('resize',updateTopButton);updateTopButton();
+}
 })();
 
