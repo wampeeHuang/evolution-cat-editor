@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/archlizheng/frontend-slides-editable",
+  "commit": "e5663e6a0bdc2c2a673198bab3fb61036a7f20ee",
+  "referenceSha256": "5fb5ac2098b8a32493f5563e9b46e133a8811d41428b9c86f9e561a0a84dbf97",
+  "referenceBytes": 136284,
+  "adaptations": [
+    "1080x1440 stage and viewport fit",
+    "reuse native Save/Export controls with original host APIs",
+    "host saved state wins over browser cache",
+    "scaled drag extents",
+    "wait for upstream FileReader on save"
+  ],
+  "notReimplemented": [
+    "selection formatting",
+    "object selection",
+    "drag",
+    "resize",
+    "media replacement",
+    "undo/redo"
+  ]
+}

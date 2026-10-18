@@ -1,0 +1,13 @@
+{
+  "source": "D:\\agent-skills\\skills\\vivi-design-system",
+  "tokensSha256": "1520ef6c7fecf4a0317e1675ff8ff8d654a9577729c07c0cd71a91685142f323",
+  "components": "references/components.md sections 30,33,input focus",
+  "referenceConsumer": "D:/tools/script-editor/稿对.html and tokens/editor-shell.css; interaction reference only",
+  "scope": "local editor consumer, promoted to 8797 after isolated validation; shared Vivi source unchanged",
+  "fontLibrary": {
+    "source": "http://127.0.0.1:8770/api/fonts",
+    "filter": "selected Chinese OFL",
+    "cachedCount": 8,
+    "manifest": "library/fonts.json"
+  }
+}

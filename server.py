@@ -30,14 +30,16 @@ def catalog_items():
         for aid,root in catalog().items():
             model=read_model(root);info=meta['articles'].get(aid,{})
             default='工具推荐' if any(w in root.name for w in ['工具','画布']) else '产品分享' if '求反馈' in root.name else '未分类'
-            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'status':info.get('status','已发布' if info.get('published',False) else '待调整'),'count':len(model['cards']),'cover':'/articles/'+aid+'/01_图卡/cards/card_1.png' if (root/'01_图卡/cards/card_1.png').is_file() else '/articles/'+aid+'/'+model['cards'][0]['pictures'][0]['image']})
+            pictures=model['cards'][0].get('pictures',[])
+            cover='/articles/'+aid+'/01_图卡/cards/card_1.png' if (root/'01_图卡/cards/card_1.png').is_file() else '/articles/'+aid+'/'+pictures[0]['image'] if pictures else '/icon.svg'
+            items.append({'id':aid,'title':model.get('copy',{}).get('shared',{}).get('title') or root.name,'draft':aid.startswith('draft-'),'folder':root.name,'path':str(root),'category':info.get('category',default),'created':root.stat().st_ctime,'lastOpened':info.get('lastOpened'),'status':info.get('status','已发布' if info.get('published',False) else '待调整'),'count':len(model['cards']),'cover':cover})
         return {'items':items,'categories':meta['categories']}
 
 def lock_for(aid):
     with LOCK_GUARD: return LOCKS.setdefault(aid, threading.Lock())
 def catalog(tests=False):
     result = {}
-    for parent, prefix in [(CONTENT, '')] + ([(TESTS, 'test-')] if tests else []):
+    for parent, prefix in [(CONTENT, ''), (TOOL/'_runtime/free-pages', 'draft-')] + ([(TESTS, 'test-')] if tests else []):
         if not parent.exists(): continue
         for d in parent.iterdir():
             if not d.is_dir() or not (d/'index.html').is_file() or d.resolve().parent != parent.resolve(): continue
@@ -63,6 +65,7 @@ def fonts():
     return [f for f in data if f.get('status')=='要' and f.get('lang')=='中文' and 'OFL' in f.get('license','') and re.fullmatch(r'[\w-]+',f.get('id',''))]
 def validate(root, model):
     if model.get('schema')!='evolution-cat-photo-v2' or not 1 <= len(model.get('cards', [])) <= 50: raise ValueError('卡片格式不匹配')
+    if any(c.get('kind')=='runtime-page' for c in model['cards']) and any(c.get('kind')!='runtime-page' for c in model['cards']): raise ValueError('自由页与旧版卡片不可混存')
     for k in ['title','body','tags']:
         if not isinstance(model.get('copy',{}).get('shared',{}).get(k),str): raise ValueError('文案字段缺失')
     t=model.get('theme',{})
@@ -70,7 +73,10 @@ def validate(root, model):
         if not isinstance(t.get(k),(int,float)) or not lo<=t[k]<=hi: raise ValueError('字号超出范围')
     if t.get('palette') not in ['ink','green']: raise ValueError('颜色预设无效')
     for c in model['cards']:
-        if c.get('kind') not in ['photo-cover','photo-double','photo-single','photo-tall','photo-decision']: raise ValueError('版式无效')
+        if c.get('kind') not in ['photo-cover','photo-double','photo-single','photo-tall','photo-decision','runtime-page']: raise ValueError('版式无效')
+        if c.get('kind')=='runtime-page':
+            from runtime_contract import validate_runtime
+            validate_runtime(root,c)
         for p in c['pictures']:
             src=p['image']
             if src.startswith('data:image/'):
@@ -81,8 +87,16 @@ def validate(root, model):
         if any(i and i not in allowed for i in t['fonts'].values()): raise ValueError('字体不在可用目录')
 def served_html(root, aid, text=None, rev=None):
     text = text or (root/'index.html').read_text('utf-8-sig')
+    match=re.search(PAT,text,re.S)
+    if match:
+        model=json.loads(match[2])
+        if model['cards'][0].get('kind')=='runtime-page':
+            from runtime_page import render_shell
+            text=render_shell(TOOL,model)
     text = re.sub(r'<base\b[^>]*>', '', text)
     context={'articleId':aid, 'revision':rev or revision(root)}
+    if aid=='07234e3e1ddeabab':
+        text=text.replace('</body>','<script defer src="/web/legacy-free-copy.js"></script></body>')
     return text.replace('<head>', '<head><link rel="icon" type="image/svg+xml" href="/icon.svg"><base href="'+BASE+'/articles/'+aid+'/">'+'<script id="editor-context" type="application/json">'+encode(context)+'</script>')
 def save(root, model):
     recovery=root/'_runtime/editor-recovery'; recovery.mkdir(parents=True,exist_ok=True)
@@ -134,7 +148,11 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_file(TOOL/'web/icon.svg');return
             if path=='/api/about': self.reply(200,{'version':(TOOL/'VERSION').read_text().strip(),'changelog':(TOOL/'CHANGELOG.md').read_text('utf8'),'port':PORT});return
             if path=='/api/catalog':self.reply(200,catalog_items());return
-            if path in ['/web/catalog.js','/web/catalog.css']:
+            if path.startswith('/web/runtime/'):
+                from runtime_page import shared_asset
+                self.send_file(shared_asset(TOOL,path[len('/web/runtime/'):]))
+                return
+            if path in ['/web/catalog.js','/web/catalog.css','/web/legacy-free-copy.js']:
                 self.send_file(TOOL/path.lstrip('/'));return
             if path.startswith('/api/jobs/'):
                 jid=path.split('/')[-1]
@@ -169,7 +187,33 @@ class Handler(SimpleHTTPRequestHandler):
             n=int(self.headers.get('Content-Length',0))
             if not 0<n<=32*1024*1024:raise ValueError('请求大小无效')
             p=json.loads(self.rfile.read(n));route=urlsplit(self.path).path
+            if route=='/api/free-pages':
+                from runtime_page import create_draft
+                aid,root=create_draft(TOOL)
+                self.reply(201,{'articleId':aid,'url':'/articles/'+aid+'/index.html','path':str(root)})
+                return
             if route=='/api/fonts':self.reply(200,{'fonts':[{'id':f['id'],'name':f['name']} for f in fonts()]});return
+            if route=='/api/free-copy':
+                source=article(p['articleId'])
+                with lock_for(p['articleId']):
+                    if p.get('revision')!=revision(source):
+                        self.reply(409,{'error':'原稿已更新，请重新打开后再创建副本'});return
+                    original=read_model(source)
+                    if any(c.get('kind')=='runtime-page' for c in original['cards']): raise ValueError('此入口用于旧版图文')
+                    from runtime_page import create_legacy_copy
+                    jid=uuid.uuid4().hex;jd=TOOL/'_runtime/jobs'/jid;jd.mkdir(parents=True)
+                    rev=revision(source)
+                    with JOB_LOCK:JOBS[jid]={'id':jid,'articleId':p['articleId'],'state':'converting','created':time.time()}
+                    update_job(jid)
+                    (jd/'render.html').write_text(served_html(source,p['articleId'],rev=rev),encoding='utf8')
+                    proc=subprocess.run(['node',str(TOOL/'render.cjs'),BASE+'/jobs/'+jid+'/render.html?export=1',str(jd),'capture-layout','0'],capture_output=True,text=True,encoding='utf8',errors='replace',timeout=90)
+                    if proc.returncode:
+                        update_job(jid,state='failed',error=proc.stderr.strip());raise ValueError('原版式读取失败：'+proc.stderr.strip())
+                    pages=json.loads((jd/'layout.json').read_text('utf8'))
+                    aid,root=create_legacy_copy(TOOL,source,original,pages,p['articleId'],rev)
+                    update_job(jid,state='done',finished=time.time(),copyArticleId=aid)
+                self.reply(201,{'articleId':aid,'url':'/articles/'+aid+'/index.html','path':str(root)})
+                return
             if route=='/api/catalog-meta':
                 with META_LOCK:
                     meta=catalog_meta()

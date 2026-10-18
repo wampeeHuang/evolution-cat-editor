@@ -98,3 +98,30 @@ _runtime/fixtures A(2张)/B(3张)通过真实浏览器不同标题保存；第�
 ## 2026-10-18 · 布局解耦隔离研究交接
 
 正式编辑器代码未改变，尚未增加任意HTML或页面资产库能力。隔离验证留在gitignored的_runtime/free-html-trial；本机详细停止点见该目录HANDOFF.md。当前仅验证HTML原位文字/图片修改、保存重开和版本校验下的Agent结构续改；拖拽缩放、富文本、完整撤销和该试验的PNG导出未完成。后续重点是独立内容布局页资产及可复用风格，避免用固定业务字段绑定布局。所有试验数据不纳入公开仓；不代表正式版本发布。
+
+## 1.4.0 · 2026-10-19 正式自由图卡
+
+用户明确授权“动正式8797”。正式服务已更新并通过工具架重启，/api/about回读1.4.0。首页增加“新建自由图卡”，由共享web/runtime/editor.html装载每稿document-state；新稿保存在_runtime/free-pages，属于持久用户数据，备份时必须覆盖。旧照片卡片及内容根不自动转换。复用MIT运行时；字体二进制留在本机_runtime/runtime-fonts，不入公开仓，跨机恢复要求见README。
+
+接入功能：Vivi文字浮栏、字体库、可视颜色选择、字号标题行带边框原位数值和第二行滑轨；对象拖动、缩放、旋转、对齐、删除、换图及原生撤销。拖动隐藏浮动工具。仍仅单张自由页，不开放视频、多页、任意HTML导入；不等于旧稿已有全部对象编辑能力，也未接入Vivi布局资产同步。
+
+正式8797浏览器验证稿：/articles/draft-0c816a53ef06a80d/index.html，保存目录_runtime/free-pages/free-828bd7751181。实际修改标题、48px、绿色、霞鹜文楷；添加虚构demo.png、拖动、缩小10%、换图，保存重开读回样式和图片。PNG输出card_1.png，1080×1440。端到端证据见_runtime/promotion-20261019/。
+
+后端验证verify-promotion.py/json：两篇独立保存；旧revision409；跨篇输出400；script注入400；旧examples/demo保存与PNG；三个导出任务按序完成，所有PNG尺寸正确。测试稿仅在_runtime/fixtures，未覆盖正式作品。正式目录浏览器实际显示5篇旧稿，未对它们执行保存或导出；早先content-hashes-before.json为空，不能充当正式作品哈希对照证据。
+
+恢复点_runtime/promotion-20261019/before为本次修改前代码副本。未提交/推送，未自动发布。目录与草稿数据均被Git忽略，不得随代码公开。
+
+## 1.4.1 · 2026-10-19 旧稿六页自由编辑副本
+
+用户指定07234e3e1ddeabab，要求先选一篇做副本。仅该原稿页面增加“创建自由编辑副本”入口，未批量转换其他稿件。/api/free-copy核对原稿revision，render.cjs capture-layout使用与PNG相同的1080×1440/DPR1环境读取已保存布局，再建立_runtime/free-pages下独立副本，保留原文案、原图、页脚页码和六页顺序。浏览器未保存修改会拦截，过期revision返回409。
+
+交付地址：http://127.0.0.1:8797/articles/draft-67b001b9e6e0114a/index.html
+持久目录：_runtime/free-pages/copy-2f51eedfefa3。source-index.html保留转换时原稿；转换来源和revision写入model.conversion。原稿index及12个products文件共13项SHA256前后相同；没有对原稿调用保存或导出。
+
+实际UI验证：第1页标题改字、单字选区绿色、图片替换成另一张，保存重开读回并成功导出六张；第6页标题改字、保存重开再导出六张；随后只恢复本任务副本中的测试改字/换图，交付保持原文原图，最后再次UI保存重开和导出。每张PNG1080×1440，浏览器无error。修改过程模型和不可变导出任务保留为证据。
+
+版式证据：_runtime/legacy-adapter-20261019/verification.json、pixel-comparison.json及free-copy-editor.png。初始转换5页像素完全一致，第4页仅图片区域有微量重采样（平均每通道差小于0.132/255），位置和文本不变；最终经过保存序列化第1页另有2个像素绿色通道累计差2，其余结果相同。不能宣称六页像素全等。两次浏览器比例捕获试制已移到该证据目录superseded，首页仅保留最终旧稿副本。
+
+运行时保存改为逐页序列化并核对页数，禁止混存自由页与旧版卡片；页面背景修改定位当前页。保留已有页数，仍不开放增删页面或视频。固定初始位置后，用户把文字写长需自行调大小/位置，不提供模板自动挤排。此次仅这篇验收，任意旧HTML尚未验证。
+
+复验原有独立保存、409、跨篇输出阻止、script拒绝、旧版演示稿保存导出和串行队列均通过，证据_runtime/promotion-20261019/verify-promotion.json。本机版本回读1.4.1；代码未提交或推送，私有副本与测试证据均Git忽略。

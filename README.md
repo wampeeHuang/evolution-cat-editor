@@ -127,7 +127,9 @@ C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe
 
 **首页没有图文？** 检查 `contentRoot` 的绝对路径、直接子目录层级和 `document-state` 格式。先用 `examples/demo` 验证入口。
 
-**怎么新增一篇？** 目前复制兼容稿件到内容父目录下的独立子目录，刷新首页；本仓库提供的 `examples/demo` 可以作为起点。暂不支持从零创建或导入任意 HTML。
+**怎么新增一篇？** 首页点“新建自由图卡”，创建1080×1440的单张自由稿，支持文字选区格式、图片、拖动缩放旋转对齐与删除。保存后可从首页重开，PNG沿用原导出队列。自由稿保存在工具的 `_runtime/free-pages/`，是需要备份的持久用户数据，不得当缓存清理。现有照片卡片继续使用原编辑器，不自动转换。也可复制兼容稿件到内容父目录下；`examples/demo` 为虚构演示。暂不支持任意HTML导入、自由稿多页或视频。
+
+自由编辑器复用 `archlizheng/frontend-slides-editable` 的MIT运行时，许可与版本记录见 `web/runtime/upstream/`；界面使用Vivi令牌。字体二进制仅在本机 `_runtime/runtime-fonts/`，不随公开源码分发：`vivi/` 对应Vivi基础字体，`library/` 对应 `web/runtime/vivi/library/fonts.json` 中的已授权字体文件。迁移到新机器需同时备份/恢复此缓存或从原字体库补齐；缺失时浏览器回退系统字体，不能视为相同排版。
 
 **保存提示冲突？** 另一个标签页或程序已经改动原稿。按提示下载当前编辑副本，再重新打开最新原稿，人工合并，避免直接覆盖。
 
@@ -140,3 +142,7 @@ C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe
 ## 项目文件
 
 `server.py` 提供本地服务，`web/` 为编辑界面，`render.cjs` 负责 PNG 渲染。版本见 [VERSION](VERSION)，变更见 [CHANGELOG.md](CHANGELOG.md)。`verify.py` 是开发阶段的隔离验收脚本，依赖本地测试夹具，不是新安装后的通用自检命令。
+
+### 旧图文自由编辑试用
+
+1.4.1先对灵感图库求反馈篇提供“创建自由编辑副本”：以已保存原稿在PNG同环境读取版式，生成独立的六页自由稿。原稿、原配图与原PNG不改写，副本沿用保存冲突检查与导出队列；右侧缩略图切页。标题、说明、页码、页脚与图片成为独立对象。该方式固定初始布局，改字变长后需手动调整位置，不保证像原模板一样自动挤排。当前入口仅此试用篇开放，不代表任意旧HTML都已兼容。新增/删除页面与视频仍未开放。
