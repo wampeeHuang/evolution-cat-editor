@@ -15,7 +15,7 @@ function installViviEditor(editor) {
   queueMicrotask(()=>{const changes=[];root.querySelectorAll('.slide-object-text').forEach(text=>{const before=text.innerHTML;normalizeInline(text);const after=text.innerHTML;if(before!==after)changes.push({text,before,after});});if(changes.length){editor.history.push({undo:()=>changes.forEach(x=>x.text.innerHTML=x.before),redo:()=>changes.forEach(x=>x.text.innerHTML=x.after)});document.getElementById('host-status').textContent='文字框高度已修正，待保存';}});
   const tools=document.getElementById('colorTools');
   const svg=path=>'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+path+'"/></svg>';
-  const icons={smaller:'M4 4h16v16H4zM8 12h8',larger:'M4 4h16v16H4zM8 12h8M12 8v8',rotate:'M4 9a8 8 0 1 1 1 9M4 3v6h6',align:'M4 3v18M8 6h12v4H8zM8 14h8v4H8z'};
+  const icons={rotate:'M4 9a8 8 0 1 1 1 9M4 3v6h6'};
   const selected=()=>editor.selected.size===1?Array.from(editor.selected)[0]:null;
   const status=t=>{document.getElementById('host-status').textContent=t;};
   const history=(el,before)=>{const after=el.getAttribute('style')||'';if(before===after)return;editor.history.push({undo:()=>{el.setAttribute('style',before);sync();status('有未保存的修改');},redo:()=>{el.setAttribute('style',after);sync();status('有未保存的修改');}});status('有未保存的修改');sync();};
@@ -26,27 +26,23 @@ function installViviEditor(editor) {
   const bound=(el)=>{const d=dimensions(el),e=extent(d);if(e.w>d.W+1||e.h>d.H+1)return false;const cx=Math.max(e.w/2,Math.min(d.W-e.w/2,d.l+d.w/2)),cy=Math.max(e.h/2,Math.min(d.H-e.h/2,d.t+d.h/2));el.style.left=((cx-d.w/2)/d.W*100)+'%';el.style.top=((cy-d.h/2)/d.H*100)+'%';return true;};
   const change=fn=>{const el=selected();if(!el)return;const before=el.getAttribute('style')||'';fn(el);if(!bound(el)){el.setAttribute('style',before);status('对象超出图卡，请先缩小');return;}history(el,before);};
   const button=(id,label,path,action)=>{const b=document.createElement('button');b.id=id;b.type='button';b.title=label;b.setAttribute('aria-label',label);b.innerHTML=svg(path);b.onpointerdown=e=>e.preventDefault();b.onclick=action;return b;};
-  const zoom=factor=>change(el=>{const d=dimensions(el);el.style.width=d.w*factor/d.W*100+'%';el.style.height=d.h*factor/d.H*100+'%';el.style.left=(d.l+d.w*(1-factor)/2)/d.W*100+'%';el.style.top=(d.t+d.h*(1-factor)/2)/d.H*100+'%';});
-  const smaller=button('objectSmaller','缩小对象 10%（不改变查看比例）',icons.smaller,()=>zoom(.9));
-  const larger=button('objectLarger','放大对象 10%（不改变查看比例）',icons.larger,()=>zoom(1.1));
-  const rotate=button('objectRotate','旋转对象',icons.rotate,()=>open('rotate'));
-  const align=button('objectAlign','对齐到当前图卡',icons.align,()=>open('align'));
-  const context=document.createElement('span');context.className='object-scope';context.textContent='未选对象';tools.prepend(context);tools.append(smaller,larger,rotate,align);
-  const remove=button('objectDelete','删除所选对象；可撤销','M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6',()=>{const el=selected();if(!el)return;editor.removeObjectsWithHistory([el],{confirmMulti:false});editor.clearSelection();status('有未保存的修改');sync();});tools.append(remove);
   const pop=document.createElement('div');pop.id='geometryPanel';pop.hidden=true;pop.setAttribute('data-deck-chrome-surface','');document.body.append(pop);
   let lastSelected=null;
-  function open(kind){const el=selected();if(!el)return;pop.hidden=false;pop.innerHTML='';const h=document.createElement('h3');h.textContent=kind==='align'?'对齐到当前图卡':'旋转对象';pop.append(h);
-    if(kind==='rotate'){
-      const label=document.createElement('label');label.textContent='角度（°）';const input=document.createElement('input');input.type='number';input.min='-180';input.max='180';input.step='1';input.value=String(angle(el));input.setAttribute('aria-label','旋转角度');label.append(input);pop.append(label);
-      const apply=button('applyRotation','应用旋转角度',icons.rotate,()=>{const n=Number(input.value);if(!input.value.trim()||!Number.isFinite(n)||Math.abs(n)>180){status('角度请输入 -180 到 180');return;}change(o=>o.style.rotate=n+'deg');input.value=String(angle(el));});apply.append('应用');pop.append(apply);input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();apply.click();}};
-      const reset=document.createElement('button');reset.type='button';reset.textContent='恢复 0°';reset.onclick=()=>{change(o=>o.style.rotate='0deg');input.value='0';};pop.append(reset);
-    } else {
-      const grid=document.createElement('div');grid.className='align-grid';
-      [['left','左对齐','M4 3v18M8 6h12M8 12h8M8 18h12'],['centerX','水平居中','M12 3v18M5 6h14M7 18h10'],['right','右对齐','M20 3v18M4 6h12M8 12h8M4 18h12'],['top','顶端对齐','M3 4h18M6 8v12M12 8v8M18 8v12'],['centerY','垂直居中','M3 12h18M6 5v14M18 7v10'],['bottom','底端对齐','M3 20h18M6 4v12M12 8v8M18 4v12']].forEach(([key,label,path])=>{grid.append(button('align-'+key,label,path,()=>change(o=>{const d=dimensions(o),e=extent(d);let cx=d.l+d.w/2,cy=d.t+d.h/2;if(key==='left')cx=e.w/2;if(key==='centerX')cx=d.W/2;if(key==='right')cx=d.W-e.w/2;if(key==='top')cy=e.h/2;if(key==='centerY')cy=d.H/2;if(key==='bottom')cy=d.H-e.h/2;o.style.left=(cx-d.w/2)/d.W*100+'%';o.style.top=(cy-d.h/2)/d.H*100+'%';})));});pop.append(grid);
-    }
+  function positionObjectTools(){tools.hidden=true;}
+  editor.positionObjectTools=positionObjectTools;
+  addEventListener('scroll',positionObjectTools,{passive:true});addEventListener('resize',positionObjectTools);
+  const contextColor=document.getElementById('colorPanel');const positionContextColor=()=>{if(contextColor.hidden||!selected())return;const r=selected().getBoundingClientRect();contextColor.style.left=Math.max(8,Math.min(innerWidth-contextColor.offsetWidth-8,r.left))+'px';contextColor.style.right='auto';contextColor.style.top=Math.max(document.getElementById('deckLeftHover').getBoundingClientRect().bottom+8,Math.min(innerHeight-contextColor.offsetHeight-8,r.bottom+6))+'px';};new MutationObserver(()=>requestAnimationFrame(positionContextColor)).observe(contextColor,{attributes:true,attributeFilter:['hidden'],childList:true});
+
+  function mountObjectControls(obj){
+    if(obj.querySelector('.object-inline-controls'))return;
+    const controls=document.createElement('div');controls.className='object-inline-controls';controls.setAttribute('data-deck-chrome-surface','');
+    for(const [id,label] of [['objectFill','对象填色'],['objectBorder','对象边框'],...(obj.dataset.objectType==='image'?[['replaceObjectImage','替换图片']]:[])]){
+      const original=document.getElementById(id),b=original.cloneNode(true);b.removeAttribute('id');b.disabled=false;b.title=label;b.setAttribute('aria-label',label);b.dataset.objectAction=id;
+      b.onpointerdown=e=>{e.preventDefault();e.stopPropagation();};b.onclick=e=>{e.preventDefault();e.stopPropagation();editor._selectOnly(obj);editor.syncObjectColors?.();original.click();};controls.append(b);
+    }obj.append(controls);
   }
-  function sync(){const el=selected();context.textContent=el?(el.dataset.objectType==='image'?'图片':'文字对象'):'未选对象';[smaller,larger,rotate,align,remove].forEach(b=>b.disabled=!editor.active||!el);if(el!==lastSelected||!editor.active)pop.hidden=true;lastSelected=el;
-    root.querySelectorAll('[data-slide-object]').forEach(obj=>{const grip=obj.querySelector('.slide-object-move');if(grip&&!grip.querySelector('svg'))grip.innerHTML=svg('M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01');const trash=obj.querySelector('.slide-object-delete');if(trash&&!trash.querySelector('svg')){trash.innerHTML=svg('M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6');trash.title='删除对象；可撤销';}if(obj.querySelector('.vv-rotate-handle'))return;const handle=button('', '旋转对象；Shift 按 15° 吸附',icons.rotate,()=>{});handle.className='vv-rotate-handle';handle.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();change(o=>o.style.rotate=(angle(o)+(e.key==='ArrowRight'?15:-15))+'deg');};obj.append(handle);});
+  function sync(){editor.syncObjectColors?.();const el=selected();if(el!==lastSelected||!editor.active){pop.hidden=true;if(contextColor.dataset.kind!=='page')contextColor.hidden=true;}lastSelected=el;positionObjectTools();
+    root.querySelectorAll('[data-slide-object]').forEach(obj=>{mountObjectControls(obj);const grip=obj.querySelector('.slide-object-move');if(grip&&!grip.querySelector('svg'))grip.innerHTML=svg('M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01');const trash=obj.querySelector('.slide-object-delete');if(trash&&!trash.querySelector('svg')){trash.innerHTML=svg('M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6');trash.title='删除对象；可撤销';}if(obj.querySelector('.vv-rotate-handle'))return;const handle=button('', '旋转对象；Shift 按 15° 吸附',icons.rotate,()=>{});handle.className='vv-rotate-handle';handle.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();change(o=>o.style.rotate=(angle(o)+(e.key==='ArrowRight'?15:-15))+'deg');};obj.append(handle);});
   }
   // Treat these panels as editing chrome before native document handlers can deselect artwork.
   document.addEventListener('pointerdown',e=>{
@@ -106,6 +102,7 @@ function installViviEditor(editor) {
     const title=p.querySelector('h3').textContent;const owner=p.closest('#textColorPanel')||title.includes('页面')?null:selected();if(owner)field.syncColor(getComputedStyle(owner)[title.includes('边框')?'borderTopColor':'backgroundColor']);else if(title.includes('页面'))field.syncColor(getComputedStyle(root.querySelector('section.slide')).backgroundColor);
     sv.onpointerdown=e=>{e.preventDefault();sv.setPointerCapture(e.pointerId);const pick=ev=>{const r=sv.getBoundingClientRect();s=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));v=1-Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height));update();};pick(e);sv.onpointermove=ev=>{if(ev.buttons)pick(ev)};};hue.oninput=()=>{h=Number(hue.value);update();};sv.onkeydown=e=>{const delta=e.shiftKey ? .1 : .02;if(e.key==='ArrowLeft')s=Math.max(0,s-delta);else if(e.key==='ArrowRight')s=Math.min(1,s+delta);else if(e.key==='ArrowUp')v=Math.min(1,v+delta);else if(e.key==='ArrowDown')v=Math.max(0,v-delta);else return;e.preventDefault();update();};
   });}
+  editor.mountColorPickers=mountColorPickers;
   const pickerObserver=new MutationObserver(mountColorPickers);pickerObserver.observe(document.getElementById('textColorPanel'),{childList:true,subtree:true});pickerObserver.observe(document.getElementById('colorPanel'),{childList:true,subtree:true});mountColorPickers();
   const toolbarWithSize=editor._updateRteToolbar;editor._updateRteToolbar=function(){toolbarWithSize.call(this);const field=document.querySelector('#textColorPanel .color-space');if(field&&!field.contains(document.activeElement)&&!document.querySelector('#textColorPanel .color-custom').contains(document.activeElement))field.syncColor(this.toolbar.style.getPropertyValue('--selection-color'));};
   // Selected OFL fonts from our existing library, cached locally for reopening/export.

@@ -91,3 +91,17 @@ html.png-export .slide-object{outline:none!important;box-shadow:none!important}
 html[data-vv-input=keyboard] .sv-field:focus-visible,html[data-vv-input=keyboard] .size-control input:focus-visible,html[data-vv-input=keyboard] .font-search:focus-visible,html[data-vv-input=keyboard] .color-space input:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 
 #runtime-title{width:180px;min-width:100px;height:32px;box-sizing:border-box;padding:0 8px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--cream);color:var(--ink);font:var(--text-sm) var(--font-body);box-shadow:none;outline:none}html[data-vv-input=keyboard] #runtime-title:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+/* Persistent color previews must win over the transparent toolbar button rule. */
+.color-picker .swatches button{background:var(--swatch)!important;border:1px solid var(--line)!important}
+body.deck-edit-mode .slide-object>.slide-object-move{width:calc(32px / var(--card-fit));height:calc(32px / var(--card-fit));left:calc(-40px / var(--card-fit));padding:calc(8px / var(--card-fit))}
+.slide-object-move svg{stroke-width:2.2}
+
+/* Bound object action chrome independently of inherited button minimum sizes. */
+body.deck-edit-mode .slide-object.is-selected>.slide-object-delete,body.deck-edit-mode .slide-object>.slide-object-move{width:calc(32px / var(--card-fit))!important;height:calc(32px / var(--card-fit))!important;min-width:0!important;min-height:0!important;max-width:calc(32px / var(--card-fit));max-height:calc(32px / var(--card-fit));padding:calc(8px / var(--card-fit))!important;box-sizing:border-box!important;transform:none!important;border-radius:calc(4px / var(--card-fit))!important}
+
+/* Compact 16px outer box, including its hover background; 12px icon. */
+body.deck-edit-mode .slide-object.is-selected>.slide-object-delete,body.deck-edit-mode .slide-object>.slide-object-move{width:calc(16px / var(--card-fit))!important;height:calc(16px / var(--card-fit))!important;max-width:calc(16px / var(--card-fit))!important;max-height:calc(16px / var(--card-fit))!important;padding:calc(2px / var(--card-fit))!important;left:calc(-20px / var(--card-fit));border-radius:calc(2px / var(--card-fit))!important}
+body.deck-edit-mode .slide-object.is-selected>.slide-object-delete{top:calc(20px / var(--card-fit))}
+
+body.deck-edit-mode .slide-object>.slide-object-move:hover{background:var(--green)!important;color:var(--cream)!important}

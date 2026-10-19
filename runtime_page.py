@@ -16,6 +16,8 @@ def create_legacy_copy(tool, source, original, pages, source_id, revision):
     folder = 'copy-' + uuid.uuid4().hex[:12]
     root = tool / '_runtime/free-pages' / folder
     cards = []
+    from role_recovery import source_entries, normalized
+    source_texts=source_entries((source/'index.html').read_text(encoding='utf-8-sig'))
     allowed_css = {'font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-transform','text-decoration','white-space','word-break','overflow-wrap','color','padding-top','padding-right','padding-bottom','padding-left','box-sizing','background-color','border-top','border-right','border-bottom','border-left','border-radius','box-shadow','object-fit','object-position'}
     esc = lambda s: html.escape(str(s), quote=True)
     for i, page in enumerate(pages):
@@ -36,7 +38,16 @@ def create_legacy_copy(tool, source, original, pages, source_id, revision):
                 src=item['src']
                 if not re.fullmatch(r'assets/products/[\w.-]+',src) or not (source/src).is_file(): raise ValueError('图片不属于原稿')
                 content=f'<div class="slide-object-graphic" style="overflow:hidden;border-radius:{esc(item["css"].get("border-radius","0"))}"><img src="{esc(src)}" style="{esc(style)};border-radius:0;width:100%;height:100%;display:block" alt=""></div>'
-            objects.append(f'<div class="slide-object" data-slide-object="" data-object-type="{kind}" data-oid="p{i+1}-o{j+1}" style="{esc(geometry)};min-height:0">{content}</div>')
+            role_attr = ''
+            if kind == 'text':
+                path=item.get('path','')
+                candidates=[e for e in source_texts[i] if e['text']==normalized(item['text']) and (not path or e['path']==path)] if i<len(source_texts) else []
+                if len(candidates)==1:
+                    entry=candidates[0]
+                    origin={'version':1,'kind':'legacy-conversion-v2','sourceArticleId':source_id,'sourceRevision':revision,'sourcePage':i+1,'sourceKey':entry['key'],'sourcePath':entry['path'],'basis':entry['basis'],'role':entry['role']}
+                    role_attr=f' data-text-role="{entry["role"]}" data-role-origin="conversion" data-source-origin="{esc(json.dumps(origin,ensure_ascii=False,separators=(",",":")))}"'
+                else:role_attr=' data-text-role="unassigned"'
+            objects.append(f'<div class="slide-object" data-slide-object="" data-object-type="{kind}"{role_attr} data-oid="p{i+1}-o{j+1}" style="{esc(geometry)};min-height:0">{content}</div>')
         deck=f'<section class="slide poster visible" id="card-{i+1:02}" style="background:{esc(page["background"])};padding:0"><div class="slide-edit-layer">'+''.join(objects)+'</div></section>'
         cards.append({'id':f'card-{i+1:02}','kind':'runtime-page','title':original['cards'][i]['title'],'pictures':[],'html':deck})
     model=json.loads(json.dumps(original));model['cards']=cards
@@ -67,10 +78,10 @@ def create_draft(tool):
     root = tool / '_runtime/free-pages' / folder
     root.mkdir(parents=True, exist_ok=False)
     deck = ('<section class="slide poster visible" id="card-01"><div class="slide-edit-layer">'
-            '<div data-slide-object="" class="slide-object" data-object-type="text" data-oid="title" '
+            '<div data-slide-object="" class="slide-object" data-object-type="text" data-text-role="heading" data-role-origin="native" data-oid="title" '
             'style="left:8%;top:12%;width:84%"><div class="slide-object-text" contenteditable="false" '
             'style="font-size:72px;line-height:1.3">写下你的标题</div></div>'
-            '<div data-slide-object="" class="slide-object" data-object-type="text" data-oid="body" '
+            '<div data-slide-object="" class="slide-object" data-object-type="text" data-text-role="body" data-role-origin="native" data-oid="body" '
             'style="left:8%;top:30%;width:84%"><div class="slide-object-text" contenteditable="false" '
             'style="font-size:36px;line-height:1.5">从一句话开始。文字和图片都可以自由摆放。</div></div>'
             '</div></section>')

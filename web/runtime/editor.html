@@ -696,7 +696,7 @@ html{scroll-snap-type:none;scroll-behavior:auto}body{min-height:100vh;height:aut
 #deckLeftHover{left:16px;top:12px;right:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;max-width:none;padding:8px;background:#fcfdf9;border:1px solid #d8ddcb;border-radius:8px}#deckLeftHover button,#deckEditChrome{opacity:1!important;pointer-events:auto!important}#deckEditChrome{display:none}body.deck-edit-mode #deckEditChrome{display:flex}#btnSave,#btnAddElement,#btnUnlockLayout{display:none}body.deck-edit-mode #btnSave,body.deck-edit-mode #btnAddElement,body.deck-edit-mode #btnUnlockLayout{display:inline-flex}#laserToggle,#fullscreenToggle{display:none!important}#host-status{font:13px system-ui;color:#52654b;display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#deckLeftHover a{font:14px system-ui;color:#40592e}.filmstrip-thumb-host{aspect-ratio:3/4}
 html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-offset{zoom:1!important;margin:0}html.png-export #deckLeftHover,html.png-export #slideSidebar,html.png-export #rteToolbar,html.png-export .progress-bar,html.png-export .nav-dots,html.png-export .export-bar,html.png-export .keyboard-hint,html.png-export .slide-object-move,html.png-export .slide-object-resize,html.png-export .slide-object-delete,html.png-export .slide-object-media-pick,html.png-export input,html.png-export .deck-add-element-menu{display:none!important}html.png-export .slide-object{outline:none!important;box-shadow:none!important}html.png-export body{background:#f6f4e9;padding:0}html.png-export .slides-offset{padding:0!important}
 </style><!-- ds-template: existing upstream editor + Vivi component composition; no available app scaffold -->
-<link rel="stylesheet" href="/web/runtime/vivi/tokens/vivi-tokens.css"><link rel="stylesheet" href="/web/runtime/vivi/editor-chrome.css"><script src="/web/runtime/vivi/editor-chrome.js"></script></head>
+<link rel="stylesheet" href="/web/runtime/vivi/tokens/vivi-tokens.css"><link rel="stylesheet" href="/web/runtime/vivi/editor-chrome.css"><script src="/web/runtime/vivi/editor-chrome.js"></script><link rel="stylesheet" href="/web/runtime/unified-shell.css"><script src="/web/publish-ui.js"></script><script src="/web/runtime/unified-shell.js"></script><script src="/web/runtime/layout-panel.js"></script><link rel="stylesheet" href="/web/publish.css"></head>
 <body>
 
 <div class="deck-left-hover-anchor" id="deckLeftHover" aria-label="Deck controls">
@@ -803,17 +803,27 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
   const titleInput=document.getElementById('runtime-title');titleInput.value=hostModel.copy.shared.title;
   const mediaReads=new Set();const pngExport=new URLSearchParams(location.search).has('export');
   if(pngExport)document.documentElement.classList.add('png-export');
-  function fitPortrait(){document.documentElement.style.setProperty('--card-fit',pngExport?1:Math.min(.85,(innerWidth-80)/1080,(innerHeight-150)/1440));}
+  function fitPortrait(){
+    const html=document.documentElement;
+    const scale=pngExport?1:Math.min(Number(html.dataset.viewZoom)||.5,(innerWidth-48)/1080);
+    html.style.setProperty('--card-fit',scale);
+    // Fill the available width at the selected zoom; reserve outer controls and column gaps.
+    const count=document.querySelectorAll('.slides-offset > section.slide').length||1;
+    const columns=pngExport?1:Math.max(1,Math.min(count,Math.floor((innerWidth-64+32)/(1080*scale+32))));
+    html.style.setProperty('--view-columns',columns);
+  }
   fitPortrait();addEventListener('resize',fitPortrait);
   function hostStatus(text){const el=document.querySelector('#host-status');el.textContent=text;el.title=text;}
   async function hostPost(route,body){const r=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,articleId:hostContext.articleId,revision:hostRevision})});const data=await r.json();if(!r.ok)throw Error((r.status===409?'保存冲突，当前编辑未覆盖原稿：':'')+(data.error||'操作失败'));return data;}
   async function persistHost(){
     await Promise.all(mediaReads);if(mediaFailure)throw mediaFailure;
     const data=serializeDeckState(deckRoot());const snapshot=structuredClone(hostModel);snapshot.copy.shared.title=titleInput.value.trim()||'未命名自由图卡';
+    for(const key of ['body','tags']){const field=document.getElementById('copy-'+key);if(field)snapshot.copy.shared[key]=field.value;}
     const template=document.createElement('template');template.innerHTML=data.deckHtml.replace(/<!--DECK:(?:START|END)-->/g,'');
     const pages=Array.from(template.content.querySelectorAll('section.slide'));
-    if(pages.length!==snapshot.cards.length)throw Error('页面数量发生变化，已阻止保存');
-    snapshot.cards.forEach((card,i)=>card.html=pages[i].outerHTML);
+    if(pages.length<1||pages.length>50)throw Error('图卡数量须为 1–50 张');
+    const existing=new Map(snapshot.cards.map(card=>[card.id,card]));
+    snapshot.cards=pages.map((page,i)=>({...existing.get(page.id),id:page.id,kind:'runtime-page',title:existing.get(page.id)?.title||'图卡 '+(i+1),pictures:existing.get(page.id)?.pictures||[],html:page.outerHTML}));
     const result=await hostPost('/api/save',{model:snapshot});hostRevision=result.revision;hostModel=snapshot;
     document.querySelector('#document-state').textContent=JSON.stringify(snapshot).replace(/</g,'\u003c');hostStatus('已保存');return snapshot;
   }
@@ -832,7 +842,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
 
   function isDeckChromeNode(node) {
     if (!node || !node.closest) return false;
-    return !!(node.closest('#deckEditChrome') || node.closest('#rteToolbar') || node.closest('#slideSidebar') ||
+    return !!(node.closest('#deckLeftHover') || node.closest('#shell-publish') || node.closest('#deckEditChrome') || node.closest('#rteToolbar') || node.closest('#slideSidebar') ||
       node.closest('#colorPanel') || node.closest('#colorTools') || node.closest('#deckAddElementMenu') || node.closest('#btnAddElement') || node.closest('#btnUnlockLayout') ||
       node.closest('#laserToggle') || node.closest('#fullscreenToggle') ||
       node.closest('.deck-edit-chrome') || node.closest('[data-deck-chrome-surface]'));
@@ -1930,20 +1940,21 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       const historyStyle=(el,patch)=>{const before=el.getAttribute('style')||'';Object.assign(el.style,patch);const after=el.getAttribute('style')||'';if(before!==after)this.history.push({undo:()=>el.setAttribute('style',before),redo:()=>el.setAttribute('style',after)});};
       const picker=(target,label,apply,allowClear=false)=>{
         target.innerHTML='<div class="color-picker"><h3>'+label+'</h3><p>常用色</p><div class="swatches">'+commonColors.map(c=>'<button type="button" style="--swatch:'+c+'" data-color="'+c+'" aria-label="'+label+' '+c+'" title="'+c+'"></button>').join('')+'</div><p>最近使用</p><div class="swatches recent-colors">'+recent.map(c=>'<button type="button" style="--swatch:'+c+'" data-color="'+c+'" aria-label="最近使用 '+c+'"></button>').join('')+'</div><label class="color-custom"><input aria-label="'+label+'自定义色值" placeholder="#RRGGBB" maxlength="7"><button type="button" data-apply-color>应用</button></label><p class="color-error" role="status"></p>'+(allowClear?'<button type="button" data-clear-color>无填色 / 无边框</button>':'')+'</div>';
-        const commit=c=>{apply(c);if(c!=='transparent'){remember(c);const row=target.querySelector('.recent-colors');if(!row.querySelector('[data-color="'+c+'"]')){const b=document.createElement('button');b.type='button';b.dataset.color=c;b.style.setProperty('--swatch',c);b.setAttribute('aria-label','最近使用 '+c);b.onmousedown=e=>e.preventDefault();b.onclick=()=>commit(c);row.prepend(b);while(row.children.length>6)row.lastElementChild.remove();}}target.querySelector('.color-error').textContent='已应用；可撤销';};
+        const commit=async c=>{try{await apply(c);}catch(error){target.querySelector('.color-error').textContent='未应用：'+error.message;return;}if(c!=='transparent'){remember(c);const row=target.querySelector('.recent-colors');if(!row.querySelector('[data-color="'+c+'"]')){const b=document.createElement('button');b.type='button';b.dataset.color=c;b.style.setProperty('--swatch',c);b.setAttribute('aria-label','最近使用 '+c);b.onmousedown=e=>e.preventDefault();b.onclick=()=>commit(c);row.prepend(b);while(row.children.length>6)row.lastElementChild.remove();}}target.querySelector('.color-error').textContent='已应用；可撤销';};
         target.querySelectorAll('[data-color]').forEach(b=>{b.addEventListener('mousedown',e=>e.preventDefault());b.onclick=()=>commit(b.dataset.color)});
         const input=target.querySelector('input');const custom=()=>{const c=input.value.trim();if(!/^#[0-9a-f]{6}$/i.test(c)){target.querySelector('.color-error').textContent='请输入六位颜色，例如 #C45038';return}commit(c.toUpperCase())};
         target.querySelector('[data-apply-color]').onclick=custom;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();custom()}};
         target.querySelector('[data-clear-color]')?.addEventListener('click',()=>commit('transparent'));
       };
+      this.buildColorPicker=picker;
       const textPanel=document.querySelector('#textColorPanel');
       picker(textPanel,'文字颜色（选区 / 后续输入）',c=>{const el=this._activeTextEl()||this._rteFormatStash?.textEl;if(!el)return;const before=el.innerHTML;this._applyInlineStyle(el,{color:c});const after=el.innerHTML;if(before!==after)this.history.push({undo:()=>el.innerHTML=before,redo:()=>el.innerHTML=after});this.toolbar.style.setProperty('--selection-color',c);this._updateRteToolbar();});
       const replaceButton=document.getElementById('replaceObjectImage');replaceButton.onpointerdown=e=>e.preventDefault();replaceButton.onclick=()=>{const obj=selectedObject();if(!obj||obj.dataset.objectType!=='image')return;const input=document.createElement('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.onchange=()=>{if(input.files[0])applyMediaFileToSlideObject(obj,input.files[0])};input.click();};
       const panel=document.querySelector('#colorPanel');
-      const openColor=(kind)=>{const obj=selectedObject();const el=kind==='page'?deck.slides[deck.current]:obj;if(!el)return;panel.hidden=false;picker(panel,kind==='page'?'当前页面背景':kind==='border'?'所选对象边框':'所选对象填色',c=>{if(kind==='border')historyStyle(el,{border:c==='transparent'?'none':'2px solid '+c,boxSizing:'border-box'});else historyStyle(el,{backgroundColor:c});},kind!=='page');};
+      const openColor=(kind)=>{const obj=selectedObject();const el=kind==='page'?deck.slides[deck.current]:obj;if(!el)return;panel.dataset.kind=kind;panel.hidden=false;picker(panel,kind==='page'?'当前页面背景':kind==='border'?'所选对象边框':'所选对象填色',c=>{if(kind==='border')historyStyle(el,{border:c==='transparent'?'none':'2px solid '+c,boxSizing:'border-box'});else historyStyle(el,{backgroundColor:c});},kind!=='page');};
       ['objectFill','objectBorder','pageFill'].forEach((id,i)=>{const b=document.getElementById(id);b.addEventListener('pointerdown',e=>e.preventDefault());b.onclick=()=>openColor(['fill','border','page'][i])});
       const syncColors=()=>{replaceButton.disabled=!this.active||selectedObject()?.dataset.objectType!=='image';document.getElementById('objectFill').disabled=!this.active||!selectedObject();document.getElementById('objectBorder').disabled=!this.active||!selectedObject();if(!this.active)panel.hidden=true;};
-      document.addEventListener('pointerup',()=>queueMicrotask(syncColors));syncColors();
+      this.syncObjectColors=syncColors;document.addEventListener('pointerup',()=>queueMicrotask(syncColors));syncColors();
       document.addEventListener('pointerdown',e=>{if(!e.target.closest('#colorPanel,#colorTools'))panel.hidden=true});
       document.querySelector('#deckLeftHover .deck-left-row').append(document.getElementById('btnExport'));document.addEventListener('keydown',e=>{if(e.key==='Escape'){panel.hidden=true;this._closeRteDrawers()}});
       const tip=document.querySelector('#uiTooltip');
@@ -2207,7 +2218,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
         n.removeAttribute('data-object-type');
         n.classList.remove('is-selected');
       });
-      cl.querySelectorAll('.slide-object-move, .slide-object-delete, [data-resize-handle], .slide-object-resize').forEach((n) => n.remove());
+      cl.querySelectorAll('.slide-object-move, .slide-object-delete, [data-resize-handle], .slide-object-resize, .object-inline-controls').forEach((n) => n.remove());
       cl.querySelectorAll('[contenteditable]').forEach((n) => n.setAttribute('contenteditable', 'false'));
       const w = slideEl.offsetWidth || window.innerWidth;
       const h = slideEl.offsetHeight || window.innerHeight;
@@ -2433,6 +2444,8 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
   function serializeSlidesRoot(root) {
     const clone = root.cloneNode(true);
     sanitizeEditableState(clone);
+    clone.querySelectorAll('.object-inline-controls').forEach(el=>el.remove());
+    clone.querySelectorAll('[data-page-label]').forEach(el=>el.removeAttribute('data-page-label'));
     return clone.innerHTML;
   }
 
@@ -3015,7 +3028,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
     }
   }, true);
 
-  function addSlideObjectToCurrentSlide(kind) {
+  function addSlideObjectToCurrentSlide(kind, position = null) {
     deck.refreshSlides();
     const slide = deck.slides[deck.current];
     if (!slide) return;
@@ -3027,7 +3040,8 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
     wrap.className = 'slide-object';
     wrap.setAttribute('data-slide-object', '');
     wrap.setAttribute('data-oid', oid);
-    wrap.style.cssText = 'left:12%;top:32%;width:42%;min-height:3rem;';
+    const point=position||{x:.29,y:.35};
+    wrap.style.cssText = 'left:'+Math.max(0,Math.min(.58,point.x))*100+'%;top:'+Math.max(0,Math.min(.72,point.y))*100+'%;width:42%;min-height:3rem;';
 
     const moveBtn = document.createElement('button');
     moveBtn.type = 'button';
@@ -3049,8 +3063,10 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       const te = document.createElement('div');
       te.className = 'slide-object-text';
       te.setAttribute('contenteditable', 'false');
-      te.style.fontSize = 'var(--body-size)';
-      te.textContent = 'New text';
+      wrap.dataset.textRole='body';wrap.dataset.roleOrigin='native';
+      let theme={};try{theme=JSON.parse(slide.dataset.layoutTheme||'{}').body||{};}catch(_){}
+      te.style.fontSize = '34px';Object.entries(theme).forEach(([p,v])=>te.style.setProperty(p,v));
+      te.textContent = '写下你的正文';
       wrap.appendChild(te);
     } else if (kind === 'image') {
       wrap.setAttribute('data-object-type', 'image');
@@ -3103,7 +3119,9 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       }
     });
     updateUndoRedoChrome();
+    return wrap;
   }
+  editor.addObjectAt=(kind,slide,point)=>{deck.refreshSlides();const index=deck.slides.indexOf(slide);if(index<0)return;deck.current=index;deck._updateChrome();return addSlideObjectToCurrentSlide(kind,point);};
 
   document.addEventListener('pointerdown', (e) => {
     if (!deckAddElementMenu || !deckAddElementMenu.classList.contains('open')) return;
@@ -3127,9 +3145,9 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       requestAnimationFrame(positionAddElementMenu);
     });
     btnAddElement.addEventListener('mouseenter', () => clearTimeout(hideT));
-    btnAddElement.addEventListener('mouseleave', scheduleHide);
+    // Keep the insertion menu open while choosing a page or native select option.
     deckAddElementMenu.addEventListener('mouseenter', () => clearTimeout(hideT));
-    deckAddElementMenu.addEventListener('mouseleave', scheduleHide);
+    // Outside click and Escape close the insertion menu.
     deckAddElementMenu.addEventListener('click', (ev) => {
       const btn = ev.target.closest('[data-add-kind]');
       if (!btn || !deckAddElementMenu.contains(btn)) return;
@@ -3559,6 +3577,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
 
   document.addEventListener('keydown', (e) => {
     const ce = e.target.closest && e.target.closest('.slide-object-text[contenteditable="true"]');
+    if(e.target.closest('input,textarea,select'))return;
     if (!editor.active && laserPointer.active && (e.key === 'Escape' || e.key === 'Esc')) {
       e.preventDefault();
       laserPointer.setActive(false);
@@ -3611,7 +3630,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
   deck._updateChrome();
   function limitHostScope(){const next=document.querySelector('#btnNewPage');if(next){next.disabled=true;next.title='当前保留已有页数，暂不增加页面';}document.querySelectorAll('#slideSidebar button[aria-label="Copy slide"],#slideSidebar button[aria-label="Delete slide"],#deckAddElementMenu [data-add-kind="video"]').forEach(b=>{b.disabled=true;b.title='当前支持文字与图片对象';});}
   limitHostScope();new MutationObserver(limitHostScope).observe(document.querySelector('#slideSidebar'),{childList:true,subtree:true});
-  if(!pngExport)enterEditMode();
+  if(!pngExport){enterEditMode();installUnifiedShell({deck,sidebar,editor,fitPortrait,titleInput,hostContext,model:hostModel,initializePage:ensureObjectControls,getRevision:()=>hostRevision});}
 })();
 </script>
 </body>
