@@ -818,7 +818,7 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
   async function persistHost(){
     await Promise.all(mediaReads);if(mediaFailure)throw mediaFailure;
     const data=serializeDeckState(deckRoot());const snapshot=structuredClone(hostModel);snapshot.copy.shared.title=titleInput.value.trim()||'未命名自由图卡';
-    for(const key of ['body','tags']){const field=document.getElementById('copy-'+key);if(field)snapshot.copy.shared[key]=field.value;}
+    for(const key of ['body','tags']){const field=document.getElementById('copy-'+key);if(field)snapshot.copy.shared[key]=key==='tags'?PublishUI.tagText(field.value):field.value;}
     const template=document.createElement('template');template.innerHTML=data.deckHtml.replace(/<!--DECK:(?:START|END)-->/g,'');
     const pages=Array.from(template.content.querySelectorAll('section.slide'));
     if(pages.length<1||pages.length>50)throw Error('图卡数量须为 1–50 张');

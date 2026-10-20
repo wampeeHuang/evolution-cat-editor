@@ -86,7 +86,7 @@ function installUnifiedShell({deck,sidebar,editor,fitPortrait,titleInput,hostCon
     for(const [button,offset] of [[background,64],[insert,92]]){button.dataset.pageId=slide.id;button.dataset.pageOffset=offset;}
     return [background,insert];
   }));}
-  const positionPageTools=()=>{[...pageTools.children].forEach(b=>{const r=deck.slides.find(s=>s.id===b.dataset.pageId)?.getBoundingClientRect();if(!r)return;b.style.left=(scrollX+r.left+Number(b.dataset.pageOffset))+'px';b.style.top=(scrollY+r.top-32)+'px';});};
+  const positionPageTools=()=>{[...pageTools.children].forEach(b=>{const r=deck.slides.find(s=>s.id===b.dataset.pageId)?.getBoundingClientRect();if(!r)return;b.style.left=(scrollX+r.left+Number(b.dataset.pageOffset))+'px';b.style.top=(scrollY+r.top-40)+'px';});};
   addEventListener('scroll',positionPageTools,{passive:true});addEventListener('resize',positionPageTools);zoom.querySelector('input').addEventListener('input',()=>requestAnimationFrame(()=>{positionPageTools();editor.positionObjectTools?.();}));
   let pageSignature='';
   const positionActions=()=>{Array.from(actions.children).forEach((b,i)=>{const r=deck.slides[i]?.getBoundingClientRect();if(!r)return;b.style.left=Math.min(innerWidth-28,r.right+4)+'px';b.style.top=(scrollY+r.top+r.height/2-12)+'px';});};

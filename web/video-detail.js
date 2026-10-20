@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s),id=location.pathname.split('/').filter(Bool
 let data=null,revision='',dirty=false,busy=false;
 const labels={title:'作品标题',body:'发布正文',tags:'标签'};
 function status(text){$('#feedback').textContent=text;$('#feedback').title=text;}
-function values(){return Object.fromEntries(Object.keys(labels).map(k=>[k,$('#copy-'+k).value]));}
+function values(){return Object.fromEntries(Object.keys(labels).map(k=>[k,k==='tags'?PublishUI.tagText($('#copy-'+k).value):$('#copy-'+k).value]));}
 function render(){
  document.title=(data.title||'视频')+' · 进化猫 · 创作工坊';$('#title').textContent=data.title||'视频';
  const video=data.videos?.[0];$('#player').hidden=!video;$('#no-video').hidden=!!video;if(video){$('#player').src=video.url;$('#player').poster=data.cover||'';}

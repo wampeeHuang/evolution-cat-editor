@@ -43,7 +43,8 @@ html.png-export .shell-card-actions{display:none!important}
 #rteToolbar .shell-persistent-colors{display:flex;gap:6px;flex-wrap:wrap;padding:4px 6px;border-left:1px solid var(--line)}
 
 /* Screen layout only: each artwork keeps its original 1080 x 1440 geometry. */
-html:not(.png-export) .slides-offset{display:grid;grid-template-columns:repeat(var(--view-columns,1),1080px);width:max-content;column-gap:calc(32px / var(--card-fit));row-gap:calc(32px / var(--card-fit))}
+html:not(.png-export) .slides-offset{display:grid;grid-template-columns:repeat(var(--view-columns,1),1080px);width:max-content;column-gap:calc(32px / var(--card-fit));row-gap:calc(56px / var(--card-fit))}
+html:not(.png-export) section.slide.poster::before{top:calc(-40px / var(--card-fit));left:calc(10px / var(--card-fit));font-size:calc(13px / var(--card-fit));line-height:calc(24px / var(--card-fit))}
 html:not(.png-export) section.slide.poster{margin:0!important}
 html:not(.png-export) .portrait-stage{padding-bottom:80px}
 
