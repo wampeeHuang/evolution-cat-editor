@@ -825,7 +825,12 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
     const existing=new Map(snapshot.cards.map(card=>[card.id,card]));
     snapshot.cards=pages.map((page,i)=>({...existing.get(page.id),id:page.id,kind:'runtime-page',title:existing.get(page.id)?.title||'图卡 '+(i+1),pictures:existing.get(page.id)?.pictures||[],html:page.outerHTML}));
     const result=await hostPost('/api/save',{model:snapshot});hostRevision=result.revision;hostModel=snapshot;
-    document.querySelector('#document-state').textContent=JSON.stringify(snapshot).replace(/</g,'\u003c');hostStatus('已保存');return snapshot;
+    document.querySelector('#document-state').textContent=JSON.stringify(snapshot).replace(/</g,'\u003c');hostStatus('已保存');
+    if(result.syncJobId){
+      hostStatus('已保存，正在同步删页后的正式图片…');
+      for(;;){const r=await fetch('/api/jobs/'+result.syncJobId);const job=await r.json();if(!r.ok)throw Error('编辑稿已保存，图片同步状态读取失败');if(job.state==='failed')throw Error('编辑稿已保存，图片同步失败：'+job.error);if(job.state==='done'){document.querySelectorAll('.shell-publish-images img').forEach(img=>img.src=img.src.split('?')[0]+'?v='+Date.now());hostStatus('已保存 · 正式图片已同步 '+job.count+' 张');break;}await new Promise(resolve=>setTimeout(resolve,350));}
+    }
+    return snapshot;
   }
 
   const STORAGE_KEY = 'editable-deck:' + (document.documentElement.getAttribute('data-deck-id') || 'default');

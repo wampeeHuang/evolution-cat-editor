@@ -459,6 +459,35 @@ def update_job(jid, **values):
     with JOB_LOCK:
         JOBS[jid].update(values)
         (TOOL/'_runtime/jobs'/jid/'job.json').write_text(json.dumps(JOBS[jid],ensure_ascii=False,indent=2),encoding='utf8')
+def publish_pngs(source, folder, recovery, replace_all=False):
+    """Archive surplus numbered exports after a full, successful render."""
+    source, folder, recovery = Path(source).resolve(), Path(folder).resolve(), Path(recovery).resolve()
+    folder.mkdir(parents=True, exist_ok=True)
+    files = [f for f in source.glob('card_*.png') if re.fullmatch(r'card_[1-9]\d*\.png', f.name)]
+    names = {f.name for f in files}
+    if not names:
+        raise ValueError('没有可发布的PNG')
+    for f in files:
+        shutil.copy2(f, folder/f.name)
+    if replace_all:
+        for old in folder.glob('card_*.png'):
+            if old.name not in names and re.fullmatch(r'card_[1-9]\d*\.png', old.name) and not old.is_symlink():
+                old.resolve().relative_to(folder)
+                recovery.mkdir(parents=True, exist_ok=True)
+                target = recovery/old.name
+                if target.exists():
+                    raise ValueError('PNG恢复副本已存在')
+                shutil.move(str(old), str(target))
+
+def queue_page_sync(root, aid, model, rev):
+    """Caller holds the article lock after saving a deck with removed pages."""
+    jid=uuid.uuid4().hex;jd=TOOL/'_runtime/jobs'/jid;jd.mkdir(parents=True)
+    (jd/'render.html').write_text(served_html(root,aid,(root/'index.html').read_text('utf-8-sig'),rev),encoding='utf8')
+    (jd/'model.json').write_text(encode(model),encoding='utf8')
+    with JOB_LOCK:JOBS[jid]={'id':jid,'articleId':aid,'state':'queued','created':time.time(),'scope':'all','page':0,'folder':str(root/'01_图卡/cards'),'revision':rev}
+    update_job(jid);Q.put(jid)
+    return jid
+
 def worker():
     while True:
         jid=Q.get()
@@ -470,12 +499,12 @@ def worker():
             model=json.loads((jd/'model.json').read_text('utf8')); folder=Path(job['folder'])
             with lock_for(job['articleId']):
                 if folder.is_relative_to(root) and revision(root)!=job['revision']: raise ValueError('导出期间原稿已更新；快照PNG保留在任务目录，未覆盖当前发布图')
-                folder.mkdir(parents=True,exist_ok=True)
-                for f in (jd/'cards').glob('card_*.png'): shutil.copy2(f,folder/f.name)
+                recovery=root/'_runtime/png-recovery'/jid
+                publish_pngs(jd/'cards',folder,recovery/'selected-output',job['scope']=='all')
                 synced=job['scope']=='all' and revision(root)==job['revision'] and model==read_model(root)
                 if synced:
                     formal=root/'01_图卡/cards';formal.mkdir(parents=True,exist_ok=True)
-                    for f in (jd/'cards').glob('card_*.png'): shutil.copy2(f,formal/f.name)
+                    if folder.resolve()!=formal.resolve():publish_pngs(jd/'cards',formal,recovery/'formal',True)
                     # The integrated editor is the publication UI; standalone compatibility link stays same-source.
                     (root/'发布面板.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url='+BASE+'/articles/'+job['articleId']+'/index.html#publish"><a href="'+BASE+'/articles/'+job['articleId']+'/index.html#publish">打开同源发布面板</a>',encoding='utf8')
             update_job(jid,state='done',finished=time.time(),count=len(list((jd/'cards').glob('card_*.png'))),synced=synced)
@@ -704,8 +733,10 @@ class Handler(SimpleHTTPRequestHandler):
             if route=='/api/save':
                 with lock_for(aid):
                     if p.get('revision')!=revision(root):self.reply(409,{'error':'保存冲突：原稿已被其他标签页或Agent更新。你的编辑已保留，请下载当前编辑副本后重新打开最新原稿。','conflict':True});return
+                    old_ids={c['id'] for c in read_model(root)['cards']}
                     save(root,model);new_revision=revision(root)
-                self.reply(200,{'revision':new_revision,'saved':True});return
+                    sync_job=queue_page_sync(root,aid,model,new_revision) if old_ids-{c['id'] for c in model['cards']} else None
+                self.reply(200,{'revision':new_revision,'saved':True,'syncJobId':sync_job});return
             if route!='/api/export':self.reply(404,{'error':'接口不存在'});return
             scope=p.get('scope');page=p.get('page',0)
             if scope not in ['all','current'] or not isinstance(page,int) or not 0<=page<len(model['cards']):raise ValueError('导出范围无效')

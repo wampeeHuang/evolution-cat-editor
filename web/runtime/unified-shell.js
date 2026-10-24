@@ -83,8 +83,11 @@ function installUnifiedShell({deck,sidebar,editor,fitPortrait,titleInput,hostCon
       addMenu.hidden=false;addMenu.classList.add('open');addMenu.setAttribute('aria-label','向第 '+(i+1)+' 页添加对象');
       const r=insert.getBoundingClientRect();addMenu.style.left=Math.max(8,Math.min(innerWidth-addMenu.offsetWidth-8,r.left))+'px';addMenu.style.top=Math.max(8,Math.min(innerHeight-addMenu.offsetHeight-8,r.bottom+6))+'px';
     });
-    for(const [button,offset] of [[background,64],[insert,92]]){button.dataset.pageId=slide.id;button.dataset.pageOffset=offset;}
-    return [background,insert];
+    const remove=button('page-delete-'+slide.id,'删除第 '+(i+1)+' 页（可撤销）','add',()=>removePage(slide));
+    remove.innerHTML=svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>');
+    remove.disabled=deck.slides.length<=1;remove.title=remove.disabled?'至少保留一页':'删除本页，可撤销；保存后生效';
+    for(const [button,offset] of [[background,64],[insert,92],[remove,120]]){button.dataset.pageId=slide.id;button.dataset.pageOffset=offset;}
+    return [background,insert,remove];
   }));}
   const positionPageTools=()=>{[...pageTools.children].forEach(b=>{const r=deck.slides.find(s=>s.id===b.dataset.pageId)?.getBoundingClientRect();if(!r)return;b.style.left=(scrollX+r.left+Number(b.dataset.pageOffset))+'px';b.style.top=(scrollY+r.top-40)+'px';});};
   addEventListener('scroll',positionPageTools,{passive:true});addEventListener('resize',positionPageTools);zoom.querySelector('input').addEventListener('input',()=>requestAnimationFrame(()=>{positionPageTools();editor.positionObjectTools?.();}));
@@ -103,6 +106,16 @@ function installUnifiedShell({deck,sidebar,editor,fitPortrait,titleInput,hostCon
       panel.querySelector('.shell-image-head p').textContent='共 '+deck.slides.length+' 张，按页码顺序上传为轮播图';
     }
     deck._updateChrome();positionActions();positionPageTools();
+  }
+  function removePage(slide){
+    deck.refreshSlides();
+    const index=deck.slides.indexOf(slide);
+    if(index<0||deck.slides.length<=1)return;
+    document.activeElement?.blur();editor.clearSelection();
+    const parent=slide.parentNode,next=slide.nextSibling;
+    const remove=()=>{editor.clearSelection();slide.remove();syncPages();deck.goTo(Math.min(index,deck.slides.length-1));status.textContent='已移除第 '+(index+1)+' 页，可撤销；请保存编辑稿';};
+    const restore=()=>{parent.insertBefore(slide,next?.parentNode===parent?next:null);initializePage(slide);syncPages();deck.goTo(deck.slides.indexOf(slide));status.textContent='已恢复图卡；请保存编辑稿';};
+    remove();editor.history.push({undo:restore,redo:remove});
   }
   function insertPage(source){
     if(deck.slides.length>=50)return;
