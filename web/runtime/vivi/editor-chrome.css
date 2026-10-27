@@ -105,3 +105,6 @@ body.deck-edit-mode .slide-object.is-selected>.slide-object-delete,body.deck-edi
 body.deck-edit-mode .slide-object.is-selected>.slide-object-delete{top:calc(20px / var(--card-fit))}
 
 body.deck-edit-mode .slide-object>.slide-object-move:hover{background:var(--green)!important;color:var(--cream)!important}
+
+/* Contextual layout actions remain outside exported artwork. */
+.object-inline-controls .layout-ease-action{width:auto!important;min-width:0!important;white-space:nowrap;font-size:calc(12px / var(--card-fit))!important;padding:calc(4px / var(--card-fit)) calc(6px / var(--card-fit))!important;height:auto!important;line-height:1.4!important}

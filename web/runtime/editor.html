@@ -1461,8 +1461,9 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
     /* Slide edge snap lines removed — only center guides + other objects (plan A). */
     _snapLinesForSlide(slide, excludeSet) {
       const sr = this._slideRect(slide);
-      const linesV = [sr.width / 2];
-      const linesH = [sr.height / 2];
+      const margin = 44 / slide.clientWidth * sr.width;
+      const linesV = [margin, sr.width / 2, sr.width-margin];
+      const linesH = [44 / slide.clientHeight * sr.height, sr.height / 2, sr.height - 44 / slide.clientHeight * sr.height];
       this._otherObjects(slide, excludeSet).forEach((o) => {
         const r = o.getBoundingClientRect();
         const left = r.left - sr.left;
@@ -1474,9 +1475,6 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
     }
 
     _applySnap(dx, dy, primaryStart, state) {
-      if (prefersReducedMotion()) {
-        return { dx, dy, lv: null, lh: null };
-      }
       const { slide, moving, sr } = state;
       const exclude = new Set(moving.map((m) => m.el));
       const snap = this._snapLinesForSlide(slide, exclude);
@@ -1485,21 +1483,33 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       let pl = (primaryStart.l / 100) * sr.width + dx;
       let pt = (primaryStart.t / 100) * sr.height + dy;
 
-      let bestVX = null, bestVd = SNAP_PX + 1;
+      let bestVX = null, bestVTarget = null, bestVd = SNAP_PX + 1;
       snap.linesV.forEach((xv) => {
         [pl, pl + pw / 2, pl + pw].forEach((edge) => {
           const d = xv - edge;
-          if (Math.abs(d) < bestVd) { bestVd = Math.abs(d); bestVX = xv - edge; }
+          if (Math.abs(d) < bestVd) { bestVd = Math.abs(d); bestVX = xv - edge; bestVTarget = xv; }
         });
       });
-      let bestHY = null, bestHd = SNAP_PX + 1;
+      let bestHY = null, bestHTarget = null, bestHd = SNAP_PX + 1;
       snap.linesH.forEach((yh) => {
         [pt, pt + ph / 2, pt + ph].forEach((edge) => {
           const d = yh - edge;
-          if (Math.abs(d) < bestHd) { bestHd = Math.abs(d); bestHY = yh - edge; }
+          if (Math.abs(d) < bestHd) { bestHd = Math.abs(d); bestHY = yh - edge; bestHTarget = yh; }
         });
       });
 
+      const others=this._otherObjects(slide,exclude).map(o=>{const r=o.getBoundingClientRect();return {x:r.left-sr.left,y:r.top-sr.top,w:r.width,h:r.height};});
+      for(const a of others)for(const b of others){
+        if(a===b)continue;
+        if(a.x+a.w<=pl+pw/2&&b.x>=pl+pw/2&&Math.min(a.y+a.h,pt+ph)>Math.max(a.y,pt)&&Math.min(b.y+b.h,pt+ph)>Math.max(b.y,pt)){
+          const target=(a.x+a.w+b.x-pw)/2,d=target-pl;
+          if(b.x-a.x-a.w>=pw&&Math.abs(d)<bestVd){bestVd=Math.abs(d);bestVX=d;bestVTarget=target;}
+        }
+        if(a.y+a.h<=pt+ph/2&&b.y>=pt+ph/2&&Math.min(a.x+a.w,pl+pw)>Math.max(a.x,pl)&&Math.min(b.x+b.w,pl+pw)>Math.max(b.x,pl)){
+          const target=(a.y+a.h+b.y-ph)/2,d=target-pt;
+          if(b.y-a.y-a.h>=ph&&Math.abs(d)<bestHd){bestHd=Math.abs(d);bestHY=d;bestHTarget=target;}
+        }
+      }
       let ndx = dx, ndy = dy;
       if (bestVX !== null && bestVd <= SNAP_PX) ndx += bestVX;
       if (bestHY !== null && bestHd <= SNAP_PX) ndy += bestHY;
@@ -1507,11 +1517,11 @@ html.png-export .portrait-stage{padding:0;display:block}html.png-export .slides-
       let lv = null, lh = null;
       if (bestVX !== null && bestVd <= SNAP_PX) {
         const nx = pl + ndx - dx;
-        lv = { pos: nx + pw / 2 };
+        lv = { pos: bestVTarget };
       }
       if (bestHY !== null && bestHd <= SNAP_PX) {
         const ny = pt + ndy - dy;
-        lh = { pos: ny + ph / 2 };
+        lh = { pos: bestHTarget };
       }
       return { dx: ndx, dy: ndy, lv, lh, sr };
     }

@@ -39,7 +39,16 @@ function installViviEditor(editor) {
     for(const [id,label] of [['objectFill','对象填色'],['objectBorder','对象边框'],...(obj.dataset.objectType==='image'?[['replaceObjectImage','替换图片']]:[])]){
       const original=document.getElementById(id),b=original.cloneNode(true);b.removeAttribute('id');b.disabled=false;b.title=label;b.setAttribute('aria-label',label);b.dataset.objectAction=id;
       b.onpointerdown=e=>{e.preventDefault();e.stopPropagation();};b.onclick=e=>{e.preventDefault();e.stopPropagation();editor._selectOnly(obj);editor.syncObjectColors?.();original.click();};controls.append(b);
-    }obj.append(controls);
+    }
+    if(obj.dataset.objectType==='image'){
+      for(const [label,mode] of [['放大图片主体','crop'],['显示完整图片','reset']]){
+        const b=document.createElement('button');b.type='button';b.textContent=label;b.className='layout-ease-action';b.setAttribute('aria-label',label);b.onpointerdown=e=>{e.preventDefault();e.stopPropagation();};b.onclick=e=>{e.stopPropagation();imageContent(obj,mode);};controls.append(b);
+      }
+    }
+    if(obj.querySelector('.slide-object-text')){
+      const b=document.createElement('button');b.type='button';b.textContent=obj.dataset.easeFlow?'关闭跟随':'文字跟随';b.className='layout-ease-action';b.setAttribute('aria-label','启用或关闭文字撑高与下方跟随');b.onpointerdown=e=>{e.preventDefault();e.stopPropagation();};b.onclick=e=>{e.stopPropagation();toggleFlow(obj,b);};controls.append(b);
+    }
+    obj.append(controls);
   }
   function sync(){editor.syncObjectColors?.();const el=selected();if(el!==lastSelected||!editor.active){pop.hidden=true;if(contextColor.dataset.kind!=='page')contextColor.hidden=true;}lastSelected=el;positionObjectTools();
     root.querySelectorAll('[data-slide-object]').forEach(obj=>{mountObjectControls(obj);const grip=obj.querySelector('.slide-object-move');if(grip&&!grip.querySelector('svg'))grip.innerHTML=svg('M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01');const trash=obj.querySelector('.slide-object-delete');if(trash&&!trash.querySelector('svg')){trash.innerHTML=svg('M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6');trash.title='删除对象；可撤销';}if(obj.querySelector('.vv-rotate-handle'))return;const handle=button('', '旋转对象；Shift 按 15° 吸附',icons.rotate,()=>{});handle.className='vv-rotate-handle';handle.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();change(o=>o.style.rotate=(angle(o)+(e.key==='ArrowRight'?15:-15))+'deg');};obj.append(handle);});
@@ -112,4 +121,51 @@ function installViviEditor(editor) {
     const options=[{name:'默认',font:'var(--font-body)'},{name:'宋体',font:'var(--font-head)'},{name:'等宽',font:'var(--font-code)'},...fonts.map(f=>({name:f.name,font:'"Zijian-'+f.id+'"',id:f.id}))];
     options.forEach(f=>{const b=document.createElement('button');b.type='button';b.textContent=f.name;b.dataset.font=f.font;b.onmousedown=e=>e.preventDefault();b.onclick=async()=>{const el=editor._activeTextEl()||editor._rteFormatStash?.textEl,stash=editor._rteFormatStash;if(!el)return;try{if(f.id){const faces=await document.fonts.load('24px '+f.font);if(!faces.length)throw Error('字体未加载');}if(!el.isConnected)return;editor._rteFormatStash=stash;const before=el.innerHTML;editor._applyFontFamily(el,f.font);const after=el.innerHTML;if(before!==after)editor.history.push({undo:()=>el.innerHTML=before,redo:()=>el.innerHTML=after});editor._updateRteToolbar();status('有未保存的修改');}catch(_){status('字体加载失败，请重试');}};rows.append(b);});fontList.querySelector('input').oninput=e=>{rows.querySelectorAll('button').forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(e.target.value.trim().toLowerCase()));};
   }catch(_){status('字体库暂未加载');}};installFonts();
+
+  // Explicit, reversible layout helpers. No geometry is inferred or changed on load.
+  function captureLayout(slide){return [...slide.querySelectorAll('[data-slide-object]')].map(o=>({o,style:o.getAttribute('style'),flow:o.getAttribute('data-ease-flow'),t:o.querySelector('.slide-object-text'),ts:o.querySelector('.slide-object-text')?.getAttribute('style')}));}
+  let restoringEase=false,pendingEase=null;
+  function restoreLayout(states){restoringEase=true;for(const s of states){if(!s.o.isConnected)continue;s.style===null?s.o.removeAttribute('style'):s.o.setAttribute('style',s.style);s.flow===null?s.o.removeAttribute('data-ease-flow'):s.o.setAttribute('data-ease-flow',s.flow);if(s.t)s.ts===null?s.t.removeAttribute('style'):s.t.setAttribute('style',s.ts);}queueMicrotask(()=>restoringEase=false);}
+  const nativeHistoryPush=editor.history.push.bind(editor.history);
+  editor.history.push=function(entry){if(pendingEase){const p=pendingEase;pendingEase=null;const after=captureLayout(p.slide),undo=entry.undo,redo=entry.redo;entry={...entry,undo:()=>{undo();restoreLayout(p.before);},redo:()=>{redo();restoreLayout(after);}};}return nativeHistoryPush(entry);};
+  function recordLayout(before,slide){const after=captureLayout(slide);nativeHistoryPush({undo:()=>restoreLayout(before),redo:()=>restoreLayout(after)});status('有未保存的修改');}
+  async function imageContent(obj,mode){
+    const im=obj.querySelector('img'),g=obj.querySelector('.slide-object-graphic');if(!im||!g)return;
+    const original=im.getAttribute('style'),gs=g.getAttribute('style'),data=im.getAttribute('data-ease-image');
+    const restore=(style,graphic,meta)=>{style===null?im.removeAttribute('style'):im.setAttribute('style',style);graphic===null?g.removeAttribute('style'):g.setAttribute('style',graphic);meta===null?im.removeAttribute('data-ease-image'):im.setAttribute('data-ease-image',meta);};
+    try{
+      if(mode==='reset'){
+        if(!data){status('当前已完整显示');return;}const saved=JSON.parse(data);restore(saved.style,saved.graphic,null);
+      }else{
+        await im.decode();if(!obj.isConnected)return;const c=document.createElement('canvas'),scale=Math.min(1,512/Math.max(im.naturalWidth,im.naturalHeight));c.width=Math.max(1,Math.round(im.naturalWidth*scale));c.height=Math.max(1,Math.round(im.naturalHeight*scale));const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(im,0,0,c.width,c.height);const pixels=ctx.getImageData(0,0,c.width,c.height).data;
+        const corners=[0,(c.width-1)*4,(c.height-1)*c.width*4,(c.width*c.height-1)*4];let bg=[0,0,0,0];for(const i of corners)for(let k=0;k<4;k++)bg[k]+=pixels[i+k]/4;
+        let l=c.width,t=c.height,r=-1,b=-1;
+        for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){const i=(y*c.width+x)*4;if(pixels[i+3]<16)continue;const ink=bg[3]<16||Math.max(...[0,1,2].map(k=>Math.abs(pixels[i+k]-bg[k])))>24;if(ink){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);}}
+        if(r<l||b<t){status('未识别到主体，原图保留');return;}
+        const pad=6;l=Math.max(0,l-pad);t=Math.max(0,t-pad);r=Math.min(c.width,r+pad+1);b=Math.min(c.height,b+pad+1);
+        const W=obj.clientWidth,H=obj.clientHeight,factor=Math.min(W/(r-l),H/(b-t));if(!W||!H)throw Error('图片区域无尺寸');
+        if(!data)im.setAttribute('data-ease-image',JSON.stringify({style:original,graphic:gs}));g.style.overflow='hidden';
+        Object.assign(im.style,{position:'absolute',width:(c.width*factor/W*100)+'%',height:(c.height*factor/H*100)+'%',left:((W-(r-l)*factor)/2-l*factor)/W*100+'%',top:((H-(b-t)*factor)/2-t*factor)/H*100+'%',objectFit:'fill',maxWidth:'none',maxHeight:'none'});
+      }
+      const after=im.getAttribute('style'),ag=g.getAttribute('style'),ad=im.getAttribute('data-ease-image');nativeHistoryPush({undo:()=>restore(original,gs,data),redo:()=>restore(after,ag,ad)});status(mode==='reset'?'已恢复完整图片；可撤销':'已按主体放大；原文件未修改，可撤销');
+    }catch(e){restore(original,gs,data);status('未能读取图片主体，原图保留：'+e.message);}
+  }
+  function toggleFlow(obj,button){
+    const slide=obj.closest('section.slide'),before=captureLayout(slide),t=obj.querySelector('.slide-object-text');if(obj.dataset.easeFlow){delete obj.dataset.easeFlow;button.textContent='文字跟随';recordLayout(before,slide);return;}
+    if(Math.abs(parseFloat(obj.style.rotate)||0)>.1){status('旋转文字暂不支持跟随');return;}
+    const bottom=obj.offsetTop+obj.offsetHeight,followers=[...slide.querySelectorAll('[data-slide-object]')].filter(o=>o!==obj&&o.offsetTop>=bottom-2&&o.offsetTop<slide.clientHeight*.94&&Math.min(o.offsetLeft+o.offsetWidth,obj.offsetLeft+obj.offsetWidth)-Math.max(o.offsetLeft,obj.offsetLeft)>Math.min(o.offsetWidth,obj.offsetWidth)*.25);
+    if(followers.some(o=>Math.abs(parseFloat(o.style.rotate)||0)>.1)){status('下方含旋转对象，请先调整后再启用');return;}
+    obj.dataset.easeFlow=JSON.stringify({min:obj.offsetHeight,followers:followers.map(o=>o.dataset.oid)});button.textContent='关闭跟随';applyFlow(obj,false);recordLayout(before,slide);status('已启用文字跟随 · 下方 '+followers.length+' 个对象；页脚固定，可撤销');
+  }
+  function applyFlow(obj,pending=true){
+    if(restoringEase||!obj.dataset.easeFlow)return;const slide=obj.closest('section.slide'),t=obj.querySelector('.slide-object-text');if(!t)return;let config;try{config=JSON.parse(obj.dataset.easeFlow);}catch(_){return;}if(!Number.isFinite(config.min)||!Array.isArray(config.followers)){status('跟随配置无效，请重新启用');return;}
+    const clone=t.cloneNode(true);clone.removeAttribute('contenteditable');Object.assign(clone.style,{position:'fixed',left:'-20000px',top:'0',width:obj.offsetWidth+'px',height:'auto',minHeight:'0',maxHeight:'none',zoom:'1',visibility:'hidden'});document.body.append(clone);const height=Math.max(config.min,Math.ceil(clone.offsetHeight));clone.remove();const delta=height-obj.offsetHeight;if(Math.abs(delta)<1)return;
+    const followers=[...slide.querySelectorAll('[data-slide-object]')].filter(o=>config.followers.includes(o.dataset.oid));const fixed=[...slide.querySelectorAll('[data-slide-object]')].filter(o=>o!==obj&&!followers.includes(o));
+    const invalid=obj.offsetTop+height>slide.clientHeight||fixed.some(f=>f.offsetTop>=obj.offsetTop+obj.offsetHeight&&Math.min(obj.offsetLeft+obj.offsetWidth,f.offsetLeft+f.offsetWidth)>Math.max(obj.offsetLeft,f.offsetLeft)&&obj.offsetTop+height>f.offsetTop)||followers.some(o=>o.offsetTop+delta<0||o.offsetTop+delta+o.offsetHeight>slide.clientHeight||fixed.some(f=>f.offsetTop>=obj.offsetTop+obj.offsetHeight&&Math.min(o.offsetLeft+o.offsetWidth,f.offsetLeft+f.offsetWidth)>Math.max(o.offsetLeft,f.offsetLeft)&&o.offsetTop+delta<f.offsetTop+f.offsetHeight&&o.offsetTop+delta+o.offsetHeight>f.offsetTop));
+    if(invalid){status('文字需要更多空间；跟随未移动，未缩字，请检查页脚或下方内容');return;}
+    if(pending&&!pendingEase)pendingEase={slide,before:captureLayout(slide)};obj.style.height=height+'px';t.style.height='auto';followers.forEach(o=>o.style.top=(o.offsetTop+delta)+'px');status('文字已撑高，下方内容保持间距；待保存');
+  }
+  document.addEventListener('input',e=>{const obj=e.target.closest?.('[data-ease-flow]');if(obj)applyFlow(obj);});
+  const originalInline=editor._applyInlineStyle;editor._applyInlineStyle=function(text,patch){const obj=text?.closest('[data-ease-flow]'),before=obj?captureLayout(obj.closest('section.slide')):null;const result=originalInline.call(this,text,patch);if(obj&&result){if(!pendingEase)pendingEase={slide:obj.closest('section.slide'),before};applyFlow(obj);}return result;};
+
 }

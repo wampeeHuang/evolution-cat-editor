@@ -1,0 +1,6 @@
+const fs=require('fs'),assert=require('node:assert/strict');const s=fs.readFileSync('web/runtime/editor.html','utf8');const method=s.slice(s.indexOf('    _applySnap(dx,'),s.indexOf('    _showSnap(',s.indexOf('    _applySnap(dx,')));const apply=Function('SNAP_PX','return ({'+method+'})._applySnap')(8);const sr={width:1080,height:1440,left:0,top:0};
+const ctx={_snapLinesForSlide:()=>({linesV:[44,540,1036],linesH:[44,720,1396]}),_otherObjects:()=>[]};let state={slide:{},moving:[],sr};
+let r=apply.call(ctx,0,0,{l:46/1080*100,t:100/1440*100,w:100,h:60},state);assert(Math.abs(r.dx+2)<.001);assert.equal(r.lv.pos,44);
+r=apply.call(ctx,0,0,{l:938/1080*100,t:100/1440*100,w:100,h:60},state);assert(Math.abs(r.dx+2)<.001);assert.equal(r.lv.pos,1036);
+ctx._snapLinesForSlide=()=>({linesV:[],linesH:[]});ctx._otherObjects=()=>[{getBoundingClientRect:()=>({left:100,top:100,width:100,height:100})},{getBoundingClientRect:()=>({left:500,top:100,width:100,height:100})}];r=apply.call(ctx,0,0,{l:302/1080*100,t:100/1440*100,w:100,h:100},state);assert(Math.abs(r.dx+2)<.001);assert.equal(r.lv.pos,300);assert(!method.includes('prefersReducedMotion'));
+console.log('PASS margin/edge target guide, equal gap, reduced-motion-independent snapping');
