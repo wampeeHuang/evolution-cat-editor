@@ -1,3 +1,8 @@
+# 当前增量 · v1.15.6 · 2026-10-27
+
+- 图文及视频列表标题及封面改为新标签页打开（target=_blank、rel=noopener），原列表保留排序、筛选及滚动位置。仅静态前端改动，无需重启服务。
+- 浏览器实点已验：原标签仍为 /?sort=status-asc，新增标签打开对应 /articles/04c2de8a19aa4125/index.html。视频列表实点亦已验：原标签保留 /video?sort=updated-desc，新标签正常加载对应视频详情。未修改作品内容。
+
 # 当前交接 · v1.15.5 · 2026-10-24
 
 - 权威源码仓库：wampeeHuang/evolution-cat-editor，main。运行服务已重启，/api/about读回1.15.5；127.0.0.1:8797为当前入口。下方历史PID与旧停止点不代表当前状态，后续启停先核对监听者。
